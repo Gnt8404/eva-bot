@@ -100,12 +100,12 @@ HISTORY_CHARS = int(os.environ.get("HISTORY_CHARS", "400"))     # обрезка
 # ---------- модерация ----------
 INSULT_REPORT_GAP = int(os.environ.get("INSULT_REPORT_GAP", "20"))  # анти-спам отчётов об оскорблениях
 DEFAULT_ADMINS = [a.strip() for a in os.environ.get(
-    "BOT_ADMINS", "@belyak345").split(",") if a.strip()]
+    "BOT_ADMINS", "").split(",") if a.strip()]
 
 # ---------- заявки на помощь ----------
 # кому приходят заявки (владелец + доверенный помощник). Первым — владелец.
 HELP_ADMINS = [int(x) for x in os.environ.get(
-    "HELP_ADMINS", "6343943842,8934016131").replace(" ", "").split(",")
+    "HELP_ADMINS", "6343943842").replace(" ", "").split(",")
     if x.strip().lstrip("-").isdigit()]
 if SUPER_ADMIN not in HELP_ADMINS:
     HELP_ADMINS.insert(0, SUPER_ADMIN)
@@ -114,7 +114,7 @@ HELP_DUP_HOURS = int(os.environ.get("HELP_DUP_HOURS", "24"))  # одна отк�
 # ---------- рассылка по чатам ----------
 # доступ только этим id (владелец сервера и доверенный помощник)
 BROADCAST_ADMINS = [int(x) for x in os.environ.get(
-    "BROADCAST_ADMINS", "6343943842,8934016131").replace(" ", "").split(",")
+    "BROADCAST_ADMINS", "6343943842").replace(" ", "").split(",")
     if x.strip().lstrip("-").isdigit()]
 BROADCAST_DELAY = float(os.environ.get("BROADCAST_DELAY", "1.0"))   # пауза между чатами, сек
 BROADCAST_PAGE = int(os.environ.get("BROADCAST_PAGE", "6"))         # чатов на странице

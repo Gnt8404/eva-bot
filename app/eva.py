@@ -12,7 +12,7 @@ COLOR = re.compile(r"[§&][0-9a-fk-orx]", re.IGNORECASE)
 
 CHECKS = ("xray", "esp", "xray-heuristic", "client-mods", "autoclicker")
 
-HELP = """🛡 Античит Eva (только для администрации)
+HELP = """Античит Eva (только для администрации)
 
 /eva check <ник> — флаги, риск, клиент, история игрока
 /eva report <ник> — отправить все данные игрока боту «Ева» в Telegram
@@ -42,10 +42,10 @@ def run(db, command):
 def _send(bot, chat_id, command):
     ok, out, channel = run(bot.db, command)
     if ok:
-        head = "✅ Eva" + (" · %s" % channel if channel else "")
+        head = "Eva" + (" · %s" % channel if channel else "")
         bot.tg.send(chat_id, "%s\n\n%s" % (head, (out or "(пусто)")[:MAX_LEN]))
     else:
-        bot.tg.send(chat_id, "❌ Eva: не удалось выполнить «%s»\n\n%s"
+        bot.tg.send(chat_id, "Eva: не удалось выполнить «%s»\n\n%s"
                     % (command, (out or "(нет ответа)")[:MAX_LEN]))
     return True
 

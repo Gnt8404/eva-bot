@@ -261,7 +261,7 @@ def list_kb(draft, rows, page=0):
     for row in chunk:
         on = marked_all or row["chat_id"] in chosen
         title = describe_chat(row).replace("\n", " ")[:34]
-        rows_kb.append([("%s %s" % ("✅" if on else "⬜", title), "bc:t:%d" % row["chat_id"])])
+        rows_kb.append([("%s %s" % ("[+]" if on else "[ ]", title), "bc:t:%d" % row["chat_id"])])
     if total > 1:
         rows_kb.append([("⏪", "bc:list:%d" % max(0, page - 1)),
                         ("%d/%d" % (page + 1, total), "bc:noop"),
