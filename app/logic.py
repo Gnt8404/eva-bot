@@ -244,6 +244,12 @@ class Bot:
         log.info("вошёл как @%s", self.me.get("username"))
         log.info("знания о сервере: записей %d (%s)", kb.count(),
                  ", ".join(kb.sources()) or "нет")
+        try:
+            ready = ["%s=%s" % (name, "да" if ok else "нет")
+                     for name, ok, _info in rcon.channels(self.db)]
+            log.info("каналы консоли: %s", ", ".join(ready))
+        except Exception as exc:  # noqa: BLE001
+            log.info("каналы консоли: проверить не удалось (%s)", exc)
 
     def register_commands(self):
         """Меню команд в Telegram (без русских названий — их API не принимает)."""
