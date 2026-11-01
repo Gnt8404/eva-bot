@@ -403,11 +403,6 @@ class Bot:
                 text = mc.status_text(snap)
                 if bed and bed.get("online"):
                     text += "\n\n" + mc.bedrock_text(bed)
-                else:
-                    # Прокси/фаервол часто не отдаёт RakNet-статус снаружи — это не
-                    # значит, что Bedrock-игроки не могут зайти.
-                    text += ("\n\nBedrock: статус снаружи недоступен "
-                             "(прокси хостинга), Java-сервер при этом работает.")
             else:
                 # Запасной путь: спрашиваем саму консоль сервера (RCON/панель).
                 # Так статус работает даже когда пинг снаружи заблокирован.
@@ -436,16 +431,11 @@ class Bot:
                          % (snap.get("error") or "нет ответа"))
             if bed and bed.get("online"):
                 lines.append(mc.bedrock_text(bed))
-            else:
-                lines.append("Bedrock: статус снаружи недоступен (прокси хостинга).")
             return "\n".join(lines)
         text = mc.status_text(snap)
         tried = snap.get("addr_list") or []
         if tried:
             text += "\nПроверены адреса: %s" % ", ".join(tried)
-        if bed and not bed.get("online"):
-            text += ("\nBedrock: статус снаружи недоступен "
-                     "(прокси хостинга) — это не обязательно значит, что сервер лежит.")
         return text
 
     def _refresh_loop(self):

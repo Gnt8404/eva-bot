@@ -220,16 +220,45 @@ def split_addrs(text):
     return out
 
 
+def is_proxy_stub(snap):
+    """Прокси хостинга (HM Proxy) отвечает заглушкой, когда сам сервер недоступен.
+
+    Такой ответ нельзя считать «сервер онлайн»: у него версия/софт «HM Proxy»
+    и MOTD «Сервер недоступен», а игроков 0/100.
+    """
+    if not snap or not snap.get("online"):
+        return False
+    text = " ".join(str(snap.get(key) or "") for key in ("version", "software", "motd"))
+    low = text.lower()
+    return ("hm proxy" in low or "сервер недоступен" in text
+            or "server unavailable" in low)
+
+
 def best_snapshot(addrs, timeout=6):
-    """Проверяет адреса по очереди, возвращает первый живой (или последний ответ)."""
+    """Проверяет адреса по очереди, возвращает первый живой (или последний ответ).
+
+    Заглушки прокси («HM Proxy» / «Сервер недоступен») живыми не считаются:
+    в этом случае лучше сказать, что сервер перезапускается, либо взять
+    статус из консоли.
+    """
     addrs = addrs if isinstance(addrs, (list, tuple)) else split_addrs(addrs)
     last = None
+    stub = None
     for addr in addrs:
         snap = snapshot(addr, timeout=timeout)
         if snap.get("online"):
+            if is_proxy_stub(snap):
+                stub = snap
+                continue
             snap["addr_list"] = list(addrs)
             return snap
         last = snap
+    if stub is not None:
+        result = dict(stub)
+        result["online"] = False
+        result["error"] = "прокси отвечает, но сервер недоступен (идёт перезапуск?)"
+        result["addr_list"] = list(addrs)
+        return result
     if last:
         last["addr_list"] = list(addrs)
     return last
