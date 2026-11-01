@@ -124,6 +124,18 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 HTTP_TIMEOUT = int(os.environ.get("RM_AI_HTTP_TIMEOUT", "12"))
 
+# ---------- консоль сервера (RCON) ----------
+# По умолчанию берутся из базы (команды /rcon ...). Переменные окружения нужны
+# для облака, где база каждый раз новая: RCON_HOST, RCON_PORT, RCON_PASS, RCON_ON.
+RCON_HOST = os.environ.get("RCON_HOST", "").strip()
+try:
+    RCON_PORT = int(os.environ.get("RCON_PORT", "25575") or 25575)
+except ValueError:
+    RCON_PORT = 25575
+RCON_PASS = os.environ.get("RCON_PASS", "").strip()
+RCON_ON = os.environ.get("RCON_ON", "on").strip().lower() not in (
+    "off", "0", "нет", "no", "false")
+
 os.makedirs(DATA_DIR, exist_ok=True)
 
 

@@ -234,6 +234,8 @@ class Bot:
         self.dm_budget = {}         # user_id -> [окно минуты, счётчик, окно суток, счётчик]
         self.insult_global = [0.0, 0]   # [окно часа, счётчик] на все чаты вместе
         self.last_poll = time.time()    # когда поллинг последний раз отвечал
+        self._rcon_state = None         # последний результат проверки консоли
+        self._rcon_tick = 0
         moder.reload(self.db.bad_words())
         self.me = self.tg.get_me()
         self.register_commands()
@@ -328,6 +330,21 @@ class Bot:
                     ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)
                 except Exception:
                     pass
+            # Раз в 5 минут проверяем консоль сервера и пишем в лог только
+            # изменения: удобно увидеть, когда RCON появился/пропал.
+            self._rcon_tick += 1
+            if self._rcon_tick % 10 == 0:
+                try:
+                    ok, out = rcon.test(self.db, timeout=5)
+                except Exception as exc:  # noqa: BLE001
+                    ok, out = False, str(exc)
+                if ok != self._rcon_state:
+                    self._rcon_state = ok
+                    text = " ".join(str(out or "").split())[:200]
+                    if ok:
+                        log.info("RCON: связь есть — %s", text)
+                    else:
+                        log.info("RCON: связи нет — %s", text)
 
     def _safe_handle(self, upd):
         try:

@@ -116,22 +116,28 @@ class Rcon:
 # настройки в базе
 # ---------------------------------------------------------------------------
 def cfg(store):
-    """Текущие настройки RCON из базы."""
+    """Текущие настройки RCON: база, затем переменные окружения, затем адрес сервера."""
+    from . import config
     host = (store.get("rcon_host") or "").strip()
+    if not host:
+        host = config.RCON_HOST
     if not host:
         from . import mc
         addr = store.server_addr()
         if addr:
             host = mc.split_addr(addr)[0]
+    port_raw = store.get("rcon_port")
     try:
-        port = int(store.get("rcon_port") or DEFAULT_PORT)
+        port = int(port_raw) if port_raw else config.RCON_PORT
     except Exception:
-        port = DEFAULT_PORT
+        port = config.RCON_PORT
+    password = (store.get("rcon_pass") or "").strip() or config.RCON_PASS
+    on_default = "on" if config.RCON_ON else "off"
     return {
         "host": host,
         "port": port,
-        "pass": store.get("rcon_pass") or "",
-        "on": (store.flag("rcon_on", "on") == "on"),
+        "pass": password,
+        "on": (store.flag("rcon_on", on_default) == "on"),
         "template": store.get("wl_template") or "whitelist add {nick}",
         "untemplate": store.get("wl_untemplate") or "whitelist remove {nick}",
     }
@@ -167,8 +173,8 @@ def run(store, cmd, timeout=8):
         client.close()
 
 
-def test(store):
-    ok, out = run(store, "list")
+def test(store, timeout=8):
+    ok, out = run(store, "list", timeout=timeout)
     if ok:
         return True, out
     return False, out
