@@ -385,10 +385,53 @@ class Bot:
         else:
             snap = mc.best_snapshot(addrs)
             bed = mc.bedrock_snapshot(self.db.bedrock_addr())
-            text = mc.full_status_text(snap, bed)
+            if snap.get("online"):
+                text = mc.status_text(snap)
+                if bed and bed.get("online"):
+                    text += "\n\n" + mc.bedrock_text(bed)
+                else:
+                    # Прокси/фаервол часто не отдаёт RakNet-статус снаружи — это не
+                    # значит, что Bedrock-игроки не могут зайти.
+                    text += ("\n\nBedrock: статус снаружи недоступен "
+                             "(прокси хостинга), Java-сервер при этом работает.")
+            else:
+                # Запасной путь: спрашиваем саму консоль сервера (RCON/панель).
+                # Так статус работает даже когда пинг снаружи заблокирован.
+                text = self._console_status(snap, bed)
         with self.snap_lock:
             self.snap_text = text
             self.snap_ts = time.time()
+        return text
+
+    def _console_status(self, snap, bed):
+        """Статус через консоль сервера, если прямой пинг недоступен."""
+        import re as _re
+        try:
+            ok, out, channel = rcon.run_any(self.db, "list", timeout=6)
+        except Exception as exc:  # noqa: BLE001
+            ok, out, channel = False, str(exc), ""
+        count = _re.search(r"(?:Сейчас|There are)\s+(\d+)\s+(?:из|of)\s+(\d+)", out or "")
+        if ok and count:
+            lines = ["Сервер: ONLINE (статус по консоли)",
+                     "Игроков: %s/%s" % (count.group(1), count.group(2)),
+                     "Канал: %s" % channel]
+            players = _re.search(r"(?:default|Игроки|players):\s*(.+)", out or "")
+            if players:
+                lines.append("Сейчас играют: %s" % players.group(1)[:250])
+            lines.append("Прямой пинг недоступен снаружи: %s"
+                         % (snap.get("error") or "нет ответа"))
+            if bed and bed.get("online"):
+                lines.append(mc.bedrock_text(bed))
+            else:
+                lines.append("Bedrock: статус снаружи недоступен (прокси хостинга).")
+            return "\n".join(lines)
+        text = mc.status_text(snap)
+        tried = snap.get("addr_list") or []
+        if tried:
+            text += "\nПроверены адреса: %s" % ", ".join(tried)
+        if bed and not bed.get("online"):
+            text += ("\nBedrock: статус снаружи недоступен "
+                     "(прокси хостинга) — это не обязательно значит, что сервер лежит.")
         return text
 
     def _refresh_loop(self):

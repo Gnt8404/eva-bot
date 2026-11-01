@@ -50,7 +50,7 @@ WAKE_WORDS = [w.strip().lower() for w in os.environ.get(
 # ---------- сервер Minecraft ----------
 # адреса для проверки статуса (Java). Можно несколько через запятую
 DEFAULT_SERVER_ADDRS = os.environ.get(
-    "MC_SERVERS", "aetherlyn34.mcmod.ru:25565,aetherlyn.mcmod.ru:25565").strip()
+    "MC_SERVERS", "107.161.154.218:25646,aetherlyn34.mcmod.ru:25565,aetherlyn.mcmod.ru:25565").strip()
 
 # адрес Bedrock для проверки (RakNet)
 DEFAULT_BEDROCK_ADDR = os.environ.get("MC_BEDROCK", "107.161.154.218:25599").strip()

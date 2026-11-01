@@ -566,6 +566,36 @@ def _code_version():
         return "?"
 
 
+def start_status_probe(bot):
+    """В фоне проверяем все адреса сервера и пишем результат в лог.
+
+    Нужно, чтобы из логов облака было видно, какой адрес реально доступен
+    снаружи (прокси/фаервол хостинга могут блокировать часть адресов).
+    """
+    def work():
+        try:
+            from app import mc
+            parts = []
+            for addr in bot.db.server_addrs():
+                snap = mc.snapshot(addr, timeout=6)
+                if snap.get("online"):
+                    parts.append("%s=ok (%s игр.)"
+                                 % (addr, snap.get("players_online", "?")))
+                else:
+                    parts.append("%s=%s" % (addr, snap.get("error") or "нет ответа"))
+            log.info("проверка адресов сервера: %s", "; ".join(parts) or "не заданы")
+            bedrock_addr = bot.db.bedrock_addr()
+            if bedrock_addr:
+                bed = mc.bedrock_snapshot(bedrock_addr, timeout=4)
+                log.info("bedrock %s: %s", (bed or {}).get("addr", bedrock_addr),
+                         "ok" if (bed or {}).get("online")
+                         else ((bed or {}).get("error") or "нет ответа"))
+        except Exception as exc:  # noqa: BLE001
+            log.info("проверка адресов сервера не удалась: %s", exc)
+
+    threading.Thread(target=work, daemon=True, name="status-probe").start()
+
+
 def main():
     from app import config, kb, logic
     from app.logic import Bot
@@ -591,6 +621,7 @@ def main():
             log.info("бот запущен: @%s (id %s)", bot.me.get("username"), bot.me.get("id"))
             touch_heartbeat()
             fails = 0
+            start_status_probe(bot)
             bot.run()
         except KeyboardInterrupt:
             log.info("остановлено вручную")
