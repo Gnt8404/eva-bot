@@ -7,8 +7,10 @@
     rcon_host, rcon_port (по умолчанию 25575), rcon_pass, rcon_on
 """
 import logging
+import re
 import socket
 import struct
+import time
 
 log = logging.getLogger("rcon")
 
@@ -18,6 +20,10 @@ TYPE_COMMAND = 2
 TYPE_RESPONSE = 0
 
 DEFAULT_PORT = 25575
+
+# Если RCON не отвечает (например, хостинг не пускает порт), 10 минут не тратим
+# время на попытки подключения — сразу идём в другие каналы консоли.
+_RCON_BAD_UNTIL = 0.0
 
 
 class RconError(Exception):
@@ -150,6 +156,7 @@ def ready(store):
 
 def run(store, cmd, timeout=8):
     """Выполнить команду на сервере. Возвращает (ok, текст)."""
+    global _RCON_BAD_UNTIL
     conf = cfg(store)
     if not conf["host"]:
         return False, ("Не задан адрес RCON. Укажи его так:\n"
@@ -158,14 +165,19 @@ def run(store, cmd, timeout=8):
         return False, ("Не задан пароль RCON. Укажи так:\n/rcon pass <пароль>")
     if not conf["on"]:
         return False, "RCON выключен. Включить: /rcon on"
+    if time.time() < _RCON_BAD_UNTIL:
+        return False, "RCON недавно не отвечал — сразу пробую другой канал"
     client = Rcon(conf["host"], conf["port"], conf["pass"], timeout=timeout)
     try:
         client.connect()
         out = client.command(cmd)
+        _RCON_BAD_UNTIL = 0.0
         return True, out or "(сервер не вернул текст)"
     except RconError as exc:
+        _RCON_BAD_UNTIL = time.time() + 3600
         return False, "Ошибка RCON: %s" % exc
     except (socket.timeout, OSError) as exc:
+        _RCON_BAD_UNTIL = time.time() + 3600
         return False, ("Не удалось подключиться к %s:%s (%s). "
                        "Проверь, что RCON включён в server.properties "
                        "(enable-rcon=true) и открыт порт." % (conf["host"], conf["port"], exc))
@@ -359,19 +371,126 @@ def agent_run(store, cmd, timeout=10):
 
 
 # ------------------------------------------------------------- панель хостинга
-def panel_run(store, cmd, timeout=10):
-    """Команда через client API панели (Pterodactyl/Pelican)."""
+PANEL_API_TIMEOUT = 15
+LOG_PREFIX = re.compile(r"^\[\d{2}:\d{2}:\d{2}\]\s*\[[^\]]+\]:\s?")
+LOG_COLOR = re.compile(r"[§&][0-9a-fk-orx]", re.IGNORECASE)
+
+
+def _panel_headers(conf):
+    return {"Authorization": "Bearer " + conf["key"],
+            "Accept": "application/json",
+            "User-Agent": "MC-Eva-Bot/1.0"}
+
+
+def _panel_api(conf, path):
+    url = "%s/api/client/servers/%s%s" % (conf["url"], conf["server"], path)
+    req = urllib.request.Request(url, headers=_panel_headers(conf))
+    with urllib.request.urlopen(req, timeout=PANEL_API_TIMEOUT) as resp:
+        return json.loads(resp.read().decode("utf-8", "replace"))
+
+
+def _panel_log_size(conf):
+    """Размер logs/latest.log в байтах (None — файла нет)."""
+    data = _panel_api(conf, "/files/list?directory=%2Flogs")
+    for item in data.get("data") or []:
+        attrs = (item or {}).get("attributes") or {}
+        if attrs.get("name") == "latest.log":
+            try:
+                return int(attrs.get("size") or 0)
+            except (TypeError, ValueError):
+                return 0
+    return None
+
+
+def _panel_read_log_from(conf, offset):
+    """Прочитать latest.log начиная с байта offset (Range, с запасным путём)."""
+    data = _panel_api(conf, "/files/download?file=%2Flogs%2Flatest.log")
+    url = ((data.get("attributes") or {}).get("url") or "").strip()
+    if not url:
+        return ""
+    req = urllib.request.Request(
+        url, headers={"Range": "bytes=%d-" % max(0, offset)})
+    try:
+        with urllib.request.urlopen(req, timeout=PANEL_API_TIMEOUT) as resp:
+            raw = resp.read()
+            code = getattr(resp, "status", 200)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 416:
+            return ""
+        with urllib.request.urlopen(url, timeout=PANEL_API_TIMEOUT) as resp:
+            raw = resp.read()
+            code = 200
+    except (urllib.error.URLError, OSError):
+        return ""
+    if code == 200 and offset and len(raw) > offset:
+        raw = raw[offset:]          # сервер отдал файл целиком — отрезаем по байтам
+    elif code == 200 and offset:
+        return ""
+    return raw.decode("utf-8", "replace")
+
+
+def _clean_log_lines(text, limit=2500):
+    lines = []
+    for line in (text or "").splitlines():
+        line = LOG_COLOR.sub("", line).strip()
+        if not line:
+            continue
+        line = LOG_PREFIX.sub("", line)
+        lines.append(line)
+    return "\n".join(lines).strip()[:limit]
+
+
+def panel_run(store, cmd, timeout=12):
+    """Команда через client API панели (Pterodactyl) + вывод из консоли.
+
+    Панель принимает команду, но ответ не возвращает: перед отправкой
+    запоминаем размер logs/latest.log, после — дочитываем только новые строки
+    (это и есть ответ сервера на команду).
+    """
     conf = panel_cfg(store)
-    if not conf["url"] or not conf["key"] or not conf["server"] or not conf["on"]:
+    if not (conf["url"] and conf["key"] and conf["server"] and conf["on"]):
         return None
+    try:
+        before = _panel_log_size(conf)
+    except Exception:
+        before = None
     url = "%s/api/client/servers/%s/command" % (conf["url"], conf["server"])
     try:
         _post_json(url, {"command": _strip_slash(cmd)},
-                   headers={"Authorization": "Bearer " + conf["key"],
-                            "Accept": "application/json"}, timeout=timeout)
-        return True, "команда отправлена панелью, ответ смотри в консоли сервера"
+                   headers=_panel_headers(conf), timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            return False, "панель: ключу не хватает прав на консоль (HTTP %s)" % exc.code
+        return False, "панель: HTTP %s" % exc.code
     except (urllib.error.URLError, OSError) as exc:
         return False, "панель недоступна: %s" % exc
+    deadline = time.time() + 4.0
+    text = ""
+    # после команды обычно достаточно 0.8-2 сек: сначала ждём, потом читаем
+    time.sleep(1.0)
+    for attempt in range(3):
+        try:
+            now = _panel_log_size(conf)
+        except Exception:
+            now = None
+        if before is not None and now is not None and now > before:
+            text = _panel_read_log_from(conf, before)
+            if text.strip():
+                break
+        elif before is None and now:
+            text = _panel_read_log_from(conf, max(0, now - 6000))
+            break
+        time.sleep(0.7)
+    if not text.strip():
+        try:
+            now = _panel_log_size(conf) or 0
+            text = _panel_read_log_from(conf, max(0, now - 4000))
+        except Exception:
+            text = ""
+    clean = _clean_log_lines(text)
+    if not clean:
+        clean = "команда отправлена панелью, вывода в консоли нет"
+    return True, clean
 
 
 # ------------------------------------------------------------------ шелл хоста
