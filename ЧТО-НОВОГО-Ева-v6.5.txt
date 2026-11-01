@@ -64,11 +64,37 @@
    (перечитать knowledge/*.md после правок). В меню команд Telegram добавлены
    /plugins и /datapacks, убраны /site и /interactions.
 
-9. Обновлены README, .env.example, самопроверка (83 проверки), скрипты деплоя:
+9. Обновлены README, .env.example, самопроверка (85 проверок), скрипты деплоя:
    deploy/panel-start.sh, Dockerfile, Procfile, deploy/windows/.
    В update.sh теперь копируется папка knowledge.
    Бот умеет писать лог в файл напрямую (LOG_FILE, UTF-8 без искажений) и
    на Windows не даёт компьютеру уйти в сон, пока работает (KEEP_AWAKE).
+
+10. Списки стали «игровыми»:
+   - из /plugins и /datapacks убран .paper-remapped (это служебная папка Paper,
+     а не плагин и не датапак);
+   - /plugins показывает только плагины, которыми пользуются игроки (11 штук):
+     телепорты, Essentials, ПвП по согласию, квесты, регистрация, скины,
+     голосовой чат, могилы, Разлом, Свадьба, Скорбь;
+   - админские и служебные плагины (CoreProtect, LuckPerms, ProtocolLib, Chunky,
+     spark, bStats, TAB, Geyser/Floodgate, ViaVersion, Intave и т.д.) скрыты из
+     списка, но остались в знаниях — если игрок спросит, Ева ответит;
+   - /datapacks показывает только реально работающие датапаки (7): Incendium,
+     Improved Pillager Outpost, Katters Structures, Nullscape, Tool Trims, Trek,
+     True Ending. Несовместимые (Arboria, Clumps, Endcity) и служебные скрыты.
+   Чтобы скрыть запись, в knowledge/*.md достаточно строки «видно: нет».
+
+11. Анимация печати замедлена: 35 символов в секунду в личке (было 90),
+    правка раз в 0.75 сек, максимум 18 секунд; в группах — 60 симв/сек.
+    Настраивается в .env (TYPE_CPS, TYPE_INTERVAL, TYPE_MAX_SEC).
+
+12. Появился облачный режим, чтобы Ева работала без компьютера:
+    - бот слушает порт PORT и отвечает 200 на healthcheck (Render, Koyeb и др.);
+    - готовы Dockerfile, render.yaml (blueprint на Render, план free) и
+      .github/workflows/keepalive.yml — пинг раз в 10 минут, чтобы бесплатный
+      сервис Render не засыпал;
+    - проект выложен в приватный репозиторий GitHub eva-bot, откуда Render
+      разворачивает его одной кнопкой.
 
 Проверка
 --------
