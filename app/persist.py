@@ -16,7 +16,7 @@ from . import rcon
 
 log = logging.getLogger("persist")
 
-ADMINS_FILE = "/plugins/Eva/bot-admins.json"
+ADMINS_FILE = "/bot-data/admins.json"
 
 
 def _conf(store):
