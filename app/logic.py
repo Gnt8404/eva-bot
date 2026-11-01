@@ -6,8 +6,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import (ai, broadcast, config, crafts, eva, kb, mckb, mc, moder, music, rcon,
-               sinfo, tg, web)
+from . import (ai, broadcast, config, crafts, eva, kb, mckb, mc, moder, music, persist,
+               rcon, sinfo, tg, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
 from .typer import Typewriter, smooth_send
@@ -54,6 +54,14 @@ MAIN_MENU = keyboard([
     [("Анкета", "m:form"), ("Поддержать сервер", "m:donate")],
 ])
 
+# То же меню, но с кнопкой админ-панели — показываем только администрации.
+ADMIN_MAIN_MENU = keyboard([
+    [("Нужна помощь", "m:help"), ("Жалоба на игрока", "m:complaint")],
+    [("О сервере", "m:about"), ("Плагины и датапаки", "m:plugins")],
+    [("Анкета", "m:form"), ("Поддержать сервер", "m:donate")],
+    [("🛠 Админ-панель", "adm:home")],
+])
+
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
 CODE_VERSION = "6.6"
@@ -62,6 +70,16 @@ CODE_VERSION = "6.6"
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
 
 BACK_MENU = keyboard([[("В меню", "m:menu")]])
+
+
+def admin_panel_kb(is_super=False):
+    """Клавиатура админ-панели (доступна только админам — проверяется отдельно)."""
+    return keyboard([
+        [("👥 Админы", "adm:admins"), ("📊 Статистика", "adm:stats")],
+        [("🖥 Консоль", "adm:console"), ("🛡 Античит", "adm:eva")],
+        [("📈 Статус сервера", "adm:status")],
+        [("🔄 Обновить", "adm:home"), ("✖ Закрыть", "adm:close")],
+    ])
 
 # ---------- заявка на помощь ----------
 # код, как показывать в кнопке, по каким словам угадать категорию из текста
@@ -107,7 +125,9 @@ def help_category(text):
 
 ADMIN_ONLY = {
     "/admin", "/stats", "/админ", "/setinfo", "/настройка", "/setip", "/setbedrock", "/ip",
-    "/admins", "/администраторы", "/addadmin", "/deladmin", "/cooldown", "/emotions", "/эмоции",
+    "/admins", "/администраторы", "/addadmin", "/addamin", "/add_admin",
+    "/добавитьадмина", "/deladmin", "/remadmin", "/del_admin", "/удалитьадмина",
+    "/cooldown", "/emotions", "/эмоции",
     "/emoji", "/эмодзи", "/insultdm", "/violations", "/fact", "/facts", "/delfact",
     "/tickets", "/zayavki", "/answer", "/say",
     "/console", "/cmd", "/консоль", "/rcon", "/wl", "/whitelist", "/вайтлист",
@@ -218,6 +238,13 @@ class Bot:
     def __init__(self):
         self.tg = Tg(config.BOT_TOKEN)
         self.db = Store()
+        # Список админов хранится ещё и в файле на диске игрового сервера:
+        # облачная база временная, а файл переживает перезапуск.
+        try:
+            if not persist.load_admins(self.db):
+                persist.save_admins_async(self.db)
+        except Exception as exc:  # noqa: BLE001
+            log.info("админы: %s", exc)
         self.state = {}                       # user_id -> черновик формы
         self.cooldown = {}                    # (chat_id, user_id) -> время последнего вопроса
         self.warned = {}                      # (chat_id, user_id) -> время последнего предупреждения
@@ -743,13 +770,13 @@ class Bot:
         parts = text.split()
         cmd = parts[0].split("@")[0].lower()
         arg = " ".join(parts[1:]).strip()
-        menu = None if group else MAIN_MENU
+        menu = None if group else (ADMIN_MAIN_MENU if is_admin else MAIN_MENU)
 
         if cmd in ("/start", "/menu", "/меню"):
             hello = ("Я %s, ИИ-помощник сервера %s. Отвечаю фактами, без воды.\n"
                      "Выбери раздел кнопкой или просто напиши вопрос."
                      % (config.BOT_NAME, sinfo.get(self.db, "about")))
-            self.tg.send(chat_id, hello, keyboard=menu or MAIN_MENU)
+            self.tg.send(chat_id, hello, keyboard=menu or (ADMIN_MAIN_MENU if is_admin else MAIN_MENU))
             return True
         if cmd in ("/help", "/помощь"):
             self.tg.send(chat_id, HELP_TEXT, keyboard=BACK_MENU)
@@ -871,21 +898,14 @@ class Bot:
             self.tg.send(chat_id, entry.render(), keyboard=BACK_MENU)
             return True
 
-        if cmd in ("/admin", "/stats", "/админ"):
-            st = self.db.stats()
-            self.tg.send(chat_id, "Админ-панель\nПользователей: %d\nОбращений: %d (открытых %d)\n"
-                                  "Знаний из группы: %d\nФактов: %d\nНарушений: %d\n"
-                                  "Адреса сервера: %s\nКулдаун в группе: %d сек.\n"
-                                  "Эмоции: %s / эмодзи: %s"
-                         % (st["users"], st["tickets"], st["open"], st["knowledge"],
-                            st["facts"], st["violations"],
-                            ", ".join(self.db.server_addrs()) or "не задан",
-                            self.db.cooldown_sec(),
-                            self.db.flag("emotions", "on"), self.db.flag("emoji", "off")),
-                         keyboard=keyboard([[("Открытые заявки", "a:tickets")],
-                                            [("Статус сервера", "m:status")],
-                                            [("О сервере", "m:about")],
-                                            [("В меню", "m:menu")]]))
+        if cmd in ("/admin", "/админ"):
+            if group:
+                self.tg.send(chat_id, "Админ-панель открывается в личке с ботом — напиши там /admin.")
+                return True
+            self.admin_panel(chat_id, uid)
+            return True
+        if cmd == "/stats":
+            self.admin_stats(chat_id)
             return True
         if cmd in ("/setinfo", "/настройка"):
             if not arg:
@@ -929,31 +949,42 @@ class Bot:
             self.tg.send(chat_id, "Статус проверяется по: %s\nBedrock: %s"
                          % (", ".join(self.db.server_addrs()) or "не задан", self.db.bedrock_addr()))
             return True
-        if cmd in ("/admins", "/админы"):
-            self.tg.send(chat_id, "Администраторы (получают отметку при нарушениях):\n%s\n\n"
-                                  "Добавить: /addadmin @username или /addadmin <id>\n"
-                                  "Убрать: /deladmin @username" % ", ".join(self.db.admins()))
+        if cmd in ("/admins", "/админы", "/администраторы"):
+            self.admin_admins(chat_id, uid)
             return True
-        if cmd == "/addadmin":
-            if not arg:
-                self.tg.send(chat_id, "Напиши: /addadmin @username или /addadmin 123456789")
+        if cmd in ("/addadmin", "/addamin", "/add_admin", "/добавитьадмина"):
+            if uid != config.SUPER_ADMIN:
+                self.tg.send(chat_id, "Менять список админов может только владелец сервера.")
                 return True
-            who = arg.split()[0]
-            if who.isdigit() or who.startswith("@"):
-                if self.db.add_admin(who):
-                    self.tg.send(chat_id, "Добавлен: %s\nСписок: %s" % (who, ", ".join(self.db.admins())))
-                else:
-                    self.tg.send(chat_id, "%s уже в списке." % who)
+            target = self._admin_target(msg, arg)
+            if not target:
+                self.tg.send(chat_id, "Кого добавить?\n\n"
+                             "• ответь на сообщение человека и напиши /addadmin\n"
+                             "• или /addadmin @username\n"
+                             "• или /addadmin 123456789",
+                             keyboard=self.admin_admins_kb(uid))
+                return True
+            if self.db.add_admin(target):
+                persist.save_admins_async(self.db)
+                self.tg.send(chat_id, "✅ Добавлен админ: %s" % target,
+                             keyboard=self.admin_admins_kb(uid))
             else:
-                self.tg.send(chat_id, "Нужен @username или числовой id.")
+                self.tg.send(chat_id, "%s уже в списке админов." % target,
+                             keyboard=self.admin_admins_kb(uid))
             return True
-        if cmd == "/deladmin":
-            if not arg:
-                self.tg.send(chat_id, "Напиши: /deladmin @username")
+        if cmd in ("/deladmin", "/remadmin", "/del_admin", "/удалитьадмина"):
+            if uid != config.SUPER_ADMIN:
+                self.tg.send(chat_id, "Убирать админов может только владелец сервера.")
                 return True
-            who = arg.split()[0]
-            self.db.del_admin(who)
-            self.tg.send(chat_id, "Убран: %s\nСписок: %s" % (who, ", ".join(self.db.admins())))
+            target = self._admin_target(msg, arg)
+            if not target:
+                self.tg.send(chat_id, "Кого убрать? Ответь на сообщение человека "
+                                      "или укажи @username / числовой id.")
+                return True
+            self.db.del_admin(target)
+            persist.save_admins_async(self.db)
+            self.tg.send(chat_id, "✅ Убран: %s" % target,
+                         keyboard=self.admin_admins_kb(uid))
             return True
         if cmd == "/cooldown":
             if not arg.isdigit():
@@ -2279,6 +2310,189 @@ class Bot:
                             ticket.get("user_id"), info.get("msg_count") or 0,
                             len(self.db.user_tickets(ticket.get("user_id") or 0, 20))))
 
+    # ---------------------------------------------------------- админ-панель
+    def admin_panel_text(self):
+        st = self.db.stats()
+        admins = self.db.admins()
+        return ("🛠 Админ-панель Евы\n"
+                "Доступ только для администрации сервера.\n\n"
+                "Пользователей: %d\n"
+                "Заявок: %d (открыто %d)\n"
+                "Знаний: %d · фактов: %d · нарушений: %d\n"
+                "Админов: %d — %s\n"
+                "Адреса сервера: %s\n\n"
+                "Быстрые команды:\n"
+                "/console <команда> — консоль сервера\n"
+                "/eva online — античит\n"
+                "/addadmin — добавить админа (только владелец)\n"
+                "/deladmin — убрать админа (только владелец)"
+                % (st["users"], st["tickets"], st["open"], st["knowledge"],
+                   st["facts"], st["violations"], len(admins),
+                   ", ".join(admins), ", ".join(self.db.server_addrs()) or "не задан"))
+
+    def admin_panel(self, chat_id, uid):
+        self.tg.send(chat_id, self.admin_panel_text(),
+                     keyboard=admin_panel_kb(uid == config.SUPER_ADMIN))
+
+    def admin_stats_text(self):
+        st = self.db.stats()
+        return ("📊 Статистика\n\n"
+                "Пользователей: %d\n"
+                "Заявок: %d (открыто %d)\n"
+                "Знаний из группы: %d\n"
+                "Фактов: %d\n"
+                "Нарушений: %d\n"
+                "Адреса сервера: %s\n"
+                "Кулдаун в группе: %d сек.\n"
+                "Эмоции: %s · эмодзи: %s"
+                % (st["users"], st["tickets"], st["open"], st["knowledge"],
+                   st["facts"], st["violations"],
+                   ", ".join(self.db.server_addrs()) or "не задан",
+                   self.db.cooldown_sec(),
+                   self.db.flag("emotions", "on"), self.db.flag("emoji", "off")))
+
+    def admin_stats(self, chat_id):
+        self.tg.send(chat_id, self.admin_stats_text(),
+                     keyboard=keyboard([[("Открытые заявки", "a:tickets")],
+                                        [("↩ Админ-панель", "adm:home")]]))
+
+    def admin_admins_text(self):
+        lines = ["👥 Администраторы:"]
+        for who in self.db.admins():
+            if str(who) == str(config.SUPER_ADMIN):
+                lines.append("• %s — владелец" % who)
+            else:
+                lines.append("• %s" % who)
+        lines += ["",
+                  "Добавить: /addadmin @ник, /addadmin <id> или ответом на сообщение.",
+                  "Убрать: кнопка ❌ ниже или /deladmin @ник.",
+                  "Менять список может только владелец."]
+        return "\n".join(lines)
+
+    def admin_admins_kb(self, uid):
+        rows = []
+        for who in self.db.admins():
+            if str(who) == str(config.SUPER_ADMIN):
+                continue
+            rows.append([("❌ Убрать %s" % who, "adm:del:%s" % who)])
+        rows.append([("➕ Добавить админа", "adm:addhelp")])
+        rows.append([("↩ Админ-панель", "adm:home")])
+        return keyboard(rows)
+
+    def admin_admins(self, chat_id, uid):
+        self.tg.send(chat_id, self.admin_admins_text(),
+                     keyboard=self.admin_admins_kb(uid))
+
+    def admin_console(self, chat_id):
+        self.tg.send(chat_id,
+                     "🖥 Консоль сервера\n\n"
+                     "Можно вручную: /console <команда> (например /console list).\n"
+                     "Ответ приходит из консоли сервера (RCON/панель).",
+                     keyboard=keyboard([
+                         [("list", "adm:run:list"), ("eva online", "adm:run:eva online")],
+                         [("say Привет", "adm:run:say Привет")],
+                         [("time set day", "adm:run:time set day")],
+                         [("↩ Админ-панель", "adm:home")]]))
+
+    def admin_eva(self, chat_id):
+        self.tg.send(chat_id,
+                     "🛡 Античит Eva\n\n"
+                     "/eva online — кто онлайн\n"
+                     "/eva check <ник> — флаги, риск, клиент\n"
+                     "/eva report <ник> — отправить данные боту\n"
+                     "/eva toggle xray|esp|xray-heuristic|client-mods|autoclicker\n"
+                     "/eva setban <ник> <причина>, /eva reload, /eva bot test",
+                     keyboard=keyboard([
+                         [("eva online", "adm:run:eva online"),
+                          ("eva bot test", "adm:run:eva bot test")],
+                         [("eva reload", "adm:run:eva reload")],
+                         [("↩ Админ-панель", "adm:home")]]))
+
+    def admin_run(self, chat_id, cmd):
+        """Выполнить серверную команду из админ-панели в фоне."""
+        def work():
+            try:
+                ok, out, channel = rcon.run_any(self.db, cmd, timeout=8)
+            except Exception as exc:  # noqa: BLE001
+                self.tg.send(chat_id, "⚠️ Ошибка: %s" % exc)
+                return
+            if not ok:
+                self.tg.send(chat_id, "⚠️ Не выполнено: %s" % (out or "нет ответа"))
+                return
+            text = "🖥 /%s\nКанал: %s\n\n%s" % (cmd, channel or "—", out or "(пусто)")
+            self.tg.send(chat_id, text[:3500], keyboard=admin_panel_kb())
+
+        self.pool.submit(work)
+
+    def admin_callback(self, data, chat_id, user, cbq):
+        uid = user.get("id")
+        if not self.db.is_admin(uid, user.get("username")):
+            self.tg.answer_callback(cbq.get("id"), "Только для администрации сервера.", True)
+            return
+        action = data[4:]
+        if action in ("home", "refresh"):
+            self.admin_panel(chat_id, uid)
+        elif action == "admins":
+            self.admin_admins(chat_id, uid)
+        elif action == "stats":
+            self.admin_stats(chat_id)
+        elif action == "console":
+            self.admin_console(chat_id)
+        elif action == "eva":
+            self.admin_eva(chat_id)
+        elif action == "status":
+            self.tg.answer_callback(cbq.get("id"), "Проверяю сервер…")
+            self.tg.send(chat_id, self.server_text(force=True),
+                         keyboard=keyboard([[("↩ Админ-панель", "adm:home")]]))
+        elif action == "addhelp":
+            self.tg.send(chat_id,
+                         "➕ Добавить админа\n\n"
+                         "1) Ответь на сообщение человека и напиши /addadmin\n"
+                         "2) Или /addadmin @username\n"
+                         "3) Или /addadmin 123456789\n\n"
+                         "Убирать: кнопки ❌ в разделе «Админы» или /deladmin @username.\n"
+                         "Менять список может только владелец.",
+                         keyboard=self.admin_admins_kb(uid))
+        elif action.startswith("del:"):
+            if uid != config.SUPER_ADMIN:
+                self.tg.answer_callback(cbq.get("id"),
+                                        "Убирать админов может только владелец.", True)
+                return
+            who = action[4:]
+            self.db.del_admin(who)
+            persist.save_admins_async(self.db)
+            self.admin_admins(chat_id, uid)
+        elif action.startswith("run:"):
+            cmd = action[4:].strip()
+            if not cmd:
+                return
+            self.tg.answer_callback(cbq.get("id"), "Выполняю…")
+            self.admin_run(chat_id, cmd)
+        elif action == "close":
+            self.tg.send(chat_id, "Панель закрыта. Открыть снова: /admin",
+                         keyboard=ADMIN_MAIN_MENU)
+
+    def _admin_target(self, msg, arg):
+        """Кого добавить/убрать: из ответа на сообщение, @username или id."""
+        reply = (msg or {}).get("reply_to_message") or {}
+        ru = reply.get("from") or {}
+        if ru.get("id") and not ru.get("is_bot"):
+            return str(ru["id"])
+        who = (arg or "").strip().split()[0] if (arg or "").strip() else ""
+        if not who:
+            return None
+        if who.isdigit():
+            return who
+        if who.startswith("@") and len(who) > 1:
+            rows = self.db.q("SELECT user_id FROM users WHERE lower(username)=?",
+                             (who[1:].lower(),))
+            if rows:
+                return str(rows[0]["user_id"])
+            return who
+        if who.lower().startswith("id") and who[2:].isdigit():
+            return who[2:]
+        return None
+
     def on_callback(self, cbq):
         data = cbq.get("data") or ""
         msg = cbq.get("message") or {}
@@ -2292,6 +2506,10 @@ class Bot:
 
         # кнопки рассылки
         if broadcast.handle_callback(self, data, chat_id, user, cbq):
+            return
+
+        if data.startswith("adm:"):
+            self.admin_callback(data, chat_id, user, cbq)
             return
 
         if data == "m:menu":
