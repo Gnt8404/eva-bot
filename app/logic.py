@@ -240,11 +240,7 @@ class Bot:
         self.db = Store()
         # Список админов хранится ещё и в файле на диске игрового сервера:
         # облачная база временная, а файл переживает перезапуск.
-        try:
-            if not persist.load_admins(self.db):
-                persist.save_admins_async(self.db)
-        except Exception as exc:  # noqa: BLE001
-            log.info("админы: %s", exc)
+        persist.load_admins_async(self.db)
         self.state = {}                       # user_id -> черновик формы
         self.cooldown = {}                    # (chat_id, user_id) -> время последнего вопроса
         self.warned = {}                      # (chat_id, user_id) -> время последнего предупреждения
