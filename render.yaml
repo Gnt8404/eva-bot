@@ -1,0 +1,29 @@
+# Render: бесплатный хостинг Евы (веб-сервис в Docker).
+# Импорт: Render Dashboard → New → Blueprint → выбрать этот репозиторий.
+# Секреты (токен бота и ключ ИИ) вводятся при создании сервиса, в git их нет.
+services:
+  - type: web
+    name: eva-bot
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: RM_AI_BOT_TOKEN
+        sync: false
+      - key: RM_AI_DEEPSEEK_KEY
+        sync: false
+      - key: BOT_DATA_DIR
+        value: /data
+      - key: TYPE_ANIMATION
+        value: "on"
+      - key: TYPE_CPS
+        value: "35"
+      - key: MC_SERVERS
+        value: "aetherlyn34.mcmod.ru:25565,aetherlyn.mcmod.ru:25565"
+      - key: MC_BEDROCK
+        value: "107.161.154.218:25599"
+      - key: TZ
+        value: "Europe/Moscow"

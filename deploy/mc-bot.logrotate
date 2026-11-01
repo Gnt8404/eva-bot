@@ -1,0 +1,12 @@
+# Ротация лога бота — чтобы диск не забился и бот не упал из-за нехватки места.
+# Установщик deploy/always-on.sh кладёт копию в /etc/logrotate.d/mc-bot
+__BOT_DIR__/data/bot.log __BOT_DIR__/data/watchdog.log {
+    weekly
+    size 20M
+    rotate 5
+    missingok
+    notifempty
+    copytruncate
+    compress
+    delaycompress
+}

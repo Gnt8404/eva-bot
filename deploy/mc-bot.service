@@ -1,0 +1,29 @@
+[Unit]
+Description=Eva helper bot for Aetherlyn Minecraft server (Telegram)
+After=network-online.target
+Wants=network-online.target
+# не сдаваться после серии падений: перезапускать бесконечно
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Папка с ботом (там, где лежит bot.py) подставляется установщиком
+WorkingDirectory=__BOT_DIR__
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=utf-8
+Environment=LOG_LEVEL=INFO
+
+# вывод пишем в свой лог (работает на любой версии systemd)
+ExecStart=/bin/sh -c 'mkdir -p __BOT_DIR__/data; exec python3 -u __BOT_DIR__/bot.py >> __BOT_DIR__/data/bot.log 2>&1'
+
+# главное: упал / убит / сервер перезагрузился — поднимется сам
+Restart=always
+RestartSec=3
+
+# корректная остановка, чтобы не оставались «залипшие» процессы
+TimeoutStopSec=20
+KillSignal=SIGTERM
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

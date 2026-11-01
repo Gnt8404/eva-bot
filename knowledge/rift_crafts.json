@@ -1,0 +1,928 @@
+{
+  "recipes": [
+    {
+      "out": "Багровая кираса",
+      "count": 1,
+      "ingredients": {
+        "nether brick": 7,
+        "Багровый катализатор": 1,
+        "Багровое сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Багровые поножи",
+      "count": 1,
+      "ingredients": {
+        "nether brick": 6,
+        "Багровый катализатор": 1,
+        "Багровое сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Багровые сапоги",
+      "count": 1,
+      "ingredients": {
+        "nether brick": 4,
+        "Багровый катализатор": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Багровый шлем",
+      "count": 1,
+      "ingredients": {
+        "nether brick": 4,
+        "Багровый катализатор": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Венец Светлой рощи",
+      "count": 1,
+      "ingredients": {
+        "glowstone dust": 2,
+        "glow berries": 1,
+        "Лепесток света": 1,
+        "Светящееся сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кираса Кровавой цитадели",
+      "count": 1,
+      "ingredients": {
+        "red nether bricks": 2,
+        "iron ingot": 1,
+        "Кровавая печать": 1,
+        "Печать Кровавой цитадели": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Костяная кираса",
+      "count": 1,
+      "ingredients": {
+        "quartz": 7,
+        "Фрагмент кости": 1,
+        "Череп Некрокороля": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Костяной шлем",
+      "count": 1,
+      "ingredients": {
+        "quartz": 4,
+        "Фрагмент кости": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Костяные поножи",
+      "count": 1,
+      "ingredients": {
+        "quartz": 6,
+        "Фрагмент кости": 1,
+        "Череп Некрокороля": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Костяные сапоги",
+      "count": 1,
+      "ingredients": {
+        "quartz": 4,
+        "Фрагмент кости": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кристальная кираса",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 7,
+        "Кристальный осколок": 1,
+        "Кристальное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кристальные поножи",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 6,
+        "Кристальный осколок": 1,
+        "Кристальное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кристальные сапоги",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 4,
+        "Кристальный осколок": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кристальный шлем",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 4,
+        "Кристальный осколок": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Морозные сапоги",
+      "count": 1,
+      "ingredients": {
+        "packed ice": 2,
+        "prismarine shard": 1,
+        "Морозный осколок": 1,
+        "Ледяное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Чёрная корона",
+      "count": 1,
+      "ingredients": {
+        "obsidian": 2,
+        "echo shard": 1,
+        "Чёрная реликвия": 1,
+        "Чёрный череп": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Багровый серп",
+      "count": 1,
+      "ingredients": {
+        "crimson planks": 2,
+        "shroomlight": 1,
+        "Багровый катализатор": 1,
+        "Багровое сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Золочёный меч",
+      "count": 1,
+      "ingredients": {
+        "gold ingot": 2,
+        "gold block": 1,
+        "Золочёный ключ": 1,
+        "Золочёная корона": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кирка Разлома",
+      "count": 1,
+      "ingredients": {
+        "Слиток Разлома": 3,
+        "stick": 2
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Клинок Разлома",
+      "count": 1,
+      "ingredients": {
+        "obsidian": 2,
+        "amethyst shard": 1,
+        "Осколок ядра": 1,
+        "Сердце Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Клинок Тёмной чащи",
+      "count": 1,
+      "ingredients": {
+        "dark oak planks": 2,
+        "moss block": 1,
+        "Теневая смола": 1,
+        "Сердце Тёмной чащи": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Костяной клинок",
+      "count": 1,
+      "ingredients": {
+        "quartz": 2,
+        "bone": 1,
+        "Фрагмент кости": 1,
+        "Череп Некрокороля": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кристальная кирка",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 2,
+        "quartz": 1,
+        "Кристальный осколок": 1,
+        "Кристальное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Лопата Разлома",
+      "count": 1,
+      "ingredients": {
+        "Слиток Разлома": 1,
+        "stick": 2
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Мотыга Разлома",
+      "count": 1,
+      "ingredients": {
+        "Слиток Разлома": 2,
+        "stick": 2
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Пепельный лук",
+      "count": 1,
+      "ingredients": {
+        "stick": 2,
+        "string": 1,
+        "Пепельная пыль": 1,
+        "Пепельное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ржавый арбалет",
+      "count": 1,
+      "ingredients": {
+        "copper ingot": 2,
+        "iron ingot": 1,
+        "Ржавый жетон": 1,
+        "Ржавая печать": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Садовый клинок",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 2,
+        "quartz": 1,
+        "Хрустальный лепесток": 1,
+        "Хрустальное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Светлая кирка",
+      "count": 1,
+      "ingredients": {
+        "Лепесток света": 3,
+        "stick": 2
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Стеклянный кинжал",
+      "count": 1,
+      "ingredients": {
+        "glass": 2,
+        "quartz": 1,
+        "Стеклянный шип": 1,
+        "Стеклянное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Токсичная коса",
+      "count": 1,
+      "ingredients": {
+        "warped stem": 2,
+        "slime ball": 1,
+        "Токсичная спора": 1,
+        "Токсичное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Топор Разлома",
+      "count": 1,
+      "ingredients": {
+        "Слиток Разлома": 4,
+        "stick": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Угольный молот",
+      "count": 1,
+      "ingredients": {
+        "basalt": 2,
+        "blaze rod": 1,
+        "Тлеющее ядро": 1,
+        "Застывшая магма": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Хрустальная лопата",
+      "count": 1,
+      "ingredients": {
+        "Хрустальный лепесток": 1,
+        "stick": 2
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Янтарный серп",
+      "count": 1,
+      "ingredients": {
+        "honeycomb": 2,
+        "gold nugget": 1,
+        "Янтарная капля": 1,
+        "Янтарное сердце": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Янтарный топор",
+      "count": 1,
+      "ingredients": {
+        "Янтарная капля": 4,
+        "stick": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Сияющий клинок",
+      "count": 1,
+      "ingredients": {
+        "quartz": 2,
+        "stick": 1,
+        "Кристалл сияния": 1,
+        "Осколок разлома": 1
+      },
+      "station": "Верстак",
+      "note": "в docs/CRAFTS.md подписано как «aurora_glacier — реликвия» (устаревшая подпись); в игре v0.3.0 предмет называется «Сияющий клинок»"
+    },
+    {
+      "out": "Клинок Пламенного Хана",
+      "count": 1,
+      "ingredients": {
+        "quartz": 2,
+        "stick": 1,
+        "Пламенный уголь": 1,
+        "Осколок разлома": 1
+      },
+      "station": "Верстак",
+      "note": "в docs/CRAFTS.md подписано как «soulfire_steppe — реликвия» (устаревшая подпись); в игре v0.3.0 предмет называется «Клинок Пламенного Хана»"
+    },
+    {
+      "out": "Чёрная реликвия",
+      "count": 1,
+      "ingredients": {
+        "echo shard": 1,
+        "obsidian": 1,
+        "coal": 1
+      },
+      "station": "Верстак",
+      "note": "это эссенция биома Чёрный собор; настоящая реликвия биома — «Чёрная корона»"
+    },
+    {
+      "out": "Кристалл сияния",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 1,
+        "glowstone dust": 1
+      },
+      "station": "Верстак",
+      "note": "в docs/CRAFTS.md подписано как «aurora_glacier — эссенция» (устаревшая подпись); в игре v0.3.0 предмет называется «Кристалл сияния»"
+    },
+    {
+      "out": "Пламенный уголь",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 1,
+        "glowstone dust": 1
+      },
+      "station": "Верстак",
+      "note": "в docs/CRAFTS.md подписано как «soulfire_steppe — эссенция» (устаревшая подпись); в игре v0.3.0 предмет называется «Пламенный уголь»"
+    },
+    {
+      "out": "Багровый катализатор",
+      "count": 1,
+      "ingredients": {
+        "crimson fungus": 1,
+        "nether wart": 1,
+        "magma cream": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кристальный осколок",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 1,
+        "quartz": 1,
+        "calcite": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Кровавая печать",
+      "count": 1,
+      "ingredients": {
+        "redstone": 1,
+        "nether brick": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Лепесток света",
+      "count": 1,
+      "ingredients": {
+        "glow berries": 1,
+        "glow lichen": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Морозный осколок",
+      "count": 1,
+      "ingredients": {
+        "prismarine shard": 1,
+        "ice": 1,
+        "snowball": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Осколок ядра",
+      "count": 1,
+      "ingredients": {
+        "end crystal": 1,
+        "amethyst shard": 1,
+        "obsidian": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Пепельная пыль",
+      "count": 1,
+      "ingredients": {
+        "soul sand": 1,
+        "gunpowder": 1,
+        "basalt": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Пыль Разлома",
+      "count": 2,
+      "ingredients": {
+        "amethyst shard": 1,
+        "glowstone dust": 1
+      },
+      "station": "Верстак",
+      "note": "базовый материал крафтов: из неё делают слиток Разлома, зелья и ключи"
+    },
+    {
+      "out": "Ржавый жетон",
+      "count": 1,
+      "ingredients": {
+        "copper ingot": 1,
+        "iron nugget": 1,
+        "copper nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Светящееся сердце",
+      "count": 1,
+      "ingredients": {
+        "Лепесток света": 2,
+        "glow lichen": 1,
+        "shroomlight": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Теневая смола",
+      "count": 1,
+      "ingredients": {
+        "moss block": 1,
+        "sculk": 1,
+        "glow lichen": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Тлеющее ядро",
+      "count": 1,
+      "ingredients": {
+        "blaze powder": 1,
+        "magma cream": 1,
+        "gunpowder": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Токсичная спора",
+      "count": 1,
+      "ingredients": {
+        "slime ball": 1,
+        "warped fungus": 1,
+        "nether wart": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Фрагмент кости",
+      "count": 1,
+      "ingredients": {
+        "bone": 1,
+        "calcite": 1,
+        "quartz": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Хрустальное сердце",
+      "count": 1,
+      "ingredients": {
+        "Хрустальный лепесток": 2,
+        "amethyst shard": 1,
+        "quartz": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Хрустальный лепесток",
+      "count": 1,
+      "ingredients": {
+        "amethyst shard": 1,
+        "quartz": 1,
+        "prismarine crystals": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Янтарная капля",
+      "count": 1,
+      "ingredients": {
+        "honeycomb": 1,
+        "sugar": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Янтарное сердце",
+      "count": 1,
+      "ingredients": {
+        "Янтарная капля": 2,
+        "honeycomb": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Золотой ключ Разлома",
+      "count": 1,
+      "ingredients": {
+        "gold ingot": 8,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Золочёный ключ",
+      "count": 1,
+      "ingredients": {
+        "gold nugget": 1,
+        "gilded blackstone": 1,
+        "gold ingot": 1
+      },
+      "station": "Верстак",
+      "note": "«Золочёный ключ» — эссенция биома Золочёные палаты (материал крафтов), не путать с настоящим ключом «Золотой ключ Разлома»"
+    },
+    {
+      "out": "Ключ Гранд-Храма",
+      "count": 1,
+      "ingredients": {
+        "Золочёный ключ": 1,
+        "Слиток Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ Костяных катакомб",
+      "count": 1,
+      "ingredients": {
+        "Фрагмент кости": 1,
+        "Слиток Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ Разлома",
+      "count": 1,
+      "ingredients": {
+        "gold nugget": 2,
+        "iron ingot": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ алхимической лаборатории",
+      "count": 1,
+      "ingredients": {
+        "Токсичная спора": 1,
+        "Пыль Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ крепости",
+      "count": 1,
+      "ingredients": {
+        "Кровавая печать": 1,
+        "Слиток Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ крипты",
+      "count": 1,
+      "ingredients": {
+        "Чёрная реликвия": 1,
+        "Пыль Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ кристальных гротов",
+      "count": 1,
+      "ingredients": {
+        "Кристальный осколок": 1,
+        "Пыль Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ лавовой кузни",
+      "count": 1,
+      "ingredients": {
+        "Тлеющее ядро": 1,
+        "Слиток Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ подземного рынка",
+      "count": 1,
+      "ingredients": {
+        "Ржавый жетон": 1,
+        "Слиток Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ полевой больницы",
+      "count": 1,
+      "ingredients": {
+        "Пепельная пыль": 1,
+        "Пыль Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Ключ сторожевой башни",
+      "count": 1,
+      "ingredients": {
+        "Теневая смола": 1,
+        "Слиток Разлома": 1,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Светлый ключ",
+      "count": 1,
+      "ingredients": {
+        "Лепесток света": 1,
+        "glowstone dust": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Хрустальный ключ",
+      "count": 1,
+      "ingredients": {
+        "Хрустальный лепесток": 1,
+        "amethyst shard": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Янтарный ключ",
+      "count": 1,
+      "ingredients": {
+        "Янтарная капля": 1,
+        "honeycomb": 1,
+        "gold nugget": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Морозное зелье",
+      "count": 1,
+      "ingredients": {
+        "glass bottle": 1,
+        "Морозный осколок": 1,
+        "snowball": 1
+      },
+      "station": "Верстак",
+      "note": "крафтится в сетке крафта (не в варочной стойке плагина)"
+    },
+    {
+      "out": "Противоядие Разлома",
+      "count": 1,
+      "ingredients": {
+        "glass bottle": 1,
+        "Пыль Разлома": 1,
+        "glowstone dust": 1
+      },
+      "station": "Верстак",
+      "note": "снимает иссушение в измерении после закрытия портала и даёт 20 секунд иммунитета; крафтится в сетке крафта"
+    },
+    {
+      "out": "Свет Разлома",
+      "count": 1,
+      "ingredients": {
+        "glass bottle": 1,
+        "Лепесток света": 1,
+        "glowstone dust": 1
+      },
+      "station": "Верстак",
+      "note": "крафтится в сетке крафта (не в варочной стойке плагина)"
+    },
+    {
+      "out": "Эликсир Разлома",
+      "count": 1,
+      "ingredients": {
+        "glass bottle": 1,
+        "Пыль Разлома": 1,
+        "bone": 1
+      },
+      "station": "Верстак",
+      "note": "крафтится в сетке крафта (не в варочной стойке плагина)"
+    },
+    {
+      "out": "Яд Токсичной рощи",
+      "count": 1,
+      "ingredients": {
+        "glass bottle": 1,
+        "Токсичная спора": 1,
+        "slime ball": 1
+      },
+      "station": "Верстак",
+      "note": "крафтится в сетке крафта (не в варочной стойке плагина)"
+    },
+    {
+      "out": "Ярость",
+      "count": 1,
+      "ingredients": {
+        "glass bottle": 1,
+        "Тлеющее ядро": 1,
+        "blaze powder": 1
+      },
+      "station": "Верстак",
+      "note": "крафтится в сетке крафта (не в варочной стойке плагина)"
+    },
+    {
+      "out": "Слиток Разлома",
+      "count": 1,
+      "ingredients": {
+        "Пыль Разлома": 3,
+        "iron ingot": 1,
+        "gold ingot": 1
+      },
+      "station": "Верстак",
+      "note": ""
+    },
+    {
+      "out": "Стеклянный шип",
+      "count": 1,
+      "ingredients": {
+        "glass": 1,
+        "sandstone": 1,
+        "quartz": 1
+      },
+      "station": "Верстак",
+      "note": "это эссенция биома Стеклянная пустыня (материал крафтов), а не оружие"
+    },
+    {
+      "out": "Тайник Разлома",
+      "count": 1,
+      "ingredients": {
+        "iron ingot": 8,
+        "Ключ Разлома": 1
+      },
+      "station": "Верстак",
+      "note": "после крафта ПКМ открывает тайник, если в инвентаре есть любой ключ Разлома"
+    }
+  ]
+}
