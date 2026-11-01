@@ -479,6 +479,7 @@ def start_health_server():
 
     Панели хостинга считают сервис живым, только если он слушает порт из
     переменной PORT. Отвечаем 200 на любой GET — этого достаточно для healthcheck.
+    Заодно считаем запросы: по счётчику видно, что бот не спит.
     Локальному запуску не мешает: без PORT сервер не поднимается.
     """
     port = os.environ.get("PORT", "").strip()
@@ -490,9 +491,13 @@ def start_health_server():
         return None
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+    state = {"requests": 0}
+
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
-            body = ("Ева работает. Версия %s.\n" % _code_version()).encode("utf-8")
+            state["requests"] += 1
+            body = ("Ева работает. Версия %s. Запросов: %d.\n"
+                    % (_code_version(), state["requests"])).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -511,6 +516,46 @@ def start_health_server():
                      name="health").start()
     log.info("health-сервер слушает порт %d (для хостинга)", port)
     return server
+
+
+def start_self_ping(interval=240):
+    """Не даём бесплатному облаку усыпить бота: раз в interval секунд
+    бот запрашивает свой публичный адрес (это входящий HTTP-запрос).
+
+    Render усыпляет бесплатные веб-сервисы после 15 минут без входящего
+    трафика, а боту нужен постоянный поллинг Telegram. Адрес берём из
+    SELF_PING_URL или RENDER_EXTERNAL_URL (Render подставляет сам).
+    """
+    url = (os.environ.get("SELF_PING_URL")
+           or os.environ.get("RENDER_EXTERNAL_URL") or "").strip()
+    if not url:
+        return None
+    if not url.startswith("http"):
+        url = "https://" + url
+    url = url.rstrip("/") + "/"
+
+    def loop():
+        import urllib.request
+        ok_once = False
+        count = 0
+        while True:
+            time.sleep(interval)
+            count += 1
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "EvaSelfPing/1.0"})
+                with urllib.request.urlopen(req, timeout=40) as resp:
+                    resp.read(200)
+                if not ok_once:
+                    log.info("самопинг работает: %s", url)
+                    ok_once = True
+                elif count % 15 == 0:
+                    log.info("самопинг: %d запросов", count)
+            except Exception as exc:  # noqa: BLE001
+                log.debug("самопинг не удался: %s", exc)
+
+    threading.Thread(target=loop, daemon=True, name="selfping").start()
+    log.info("самопинг включён: %s каждые %d сек", url, interval)
+    return url
 
 
 def _code_version():
@@ -537,6 +582,7 @@ def main():
              ", ".join(kb.sources()) or "нет")
     touch_heartbeat()
     start_health_server()
+    start_self_ping()
     fails = 0
     while True:
         try:
