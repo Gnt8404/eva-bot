@@ -25,5 +25,14 @@ services:
         value: "aetherlyn34.mcmod.ru:25565,aetherlyn.mcmod.ru:25565"
       - key: MC_BEDROCK
         value: "107.161.154.218:25599"
+      - key: RCON_HOST
+        value: "107.161.154.218"
+      - key: RCON_PORT
+        value: "25662"
+      - key: RCON_ON
+        value: "on"
+      # Пароль RCON не хранится в git: задай значение в Render Dashboard → Environment
+      - key: RCON_PASS
+        sync: false
       - key: TZ
         value: "Europe/Moscow"

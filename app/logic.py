@@ -6,7 +6,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import (ai, broadcast, config, crafts, kb, mckb, mc, moder, music, rcon,
+from . import (ai, broadcast, config, crafts, eva, kb, mckb, mc, moder, music, rcon,
                sinfo, tg, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
@@ -56,7 +56,7 @@ MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "6.5"
+CODE_VERSION = "6.6"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -111,6 +111,7 @@ ADMIN_ONLY = {
     "/emoji", "/эмодзи", "/insultdm", "/violations", "/fact", "/facts", "/delfact",
     "/tickets", "/zayavki", "/answer", "/say",
     "/console", "/cmd", "/консоль", "/rcon", "/wl", "/whitelist", "/вайтлист",
+    "/eva", "/ева",
     "/kb", "/знания",
     "/moder", "/модерация", "/фильтр", "/check", "/проверка",
     "/addbad", "/delbad", "/badlist", "/badwords",
@@ -193,6 +194,7 @@ HELP_TEXT = """Что я умею:
 в какой-нибудь другой валюте.
 
 Для администрации: /console <команда> — консоль сервера прямо из чата,
+/eva — управление античитом Eva (check/report/toggle/setban/reload/bot test),
 /rcon — настройка связи с сервером, /wl add <ник> — добавить в вайтлист,
 /moder on|off — фильтр оскорблений, /addbad <слово> — своё слово в фильтр,
 /setinfo — карточка сервера, /setip <адрес:порт> — адреса для проверки статуса,
@@ -1133,6 +1135,8 @@ class Bot:
                       "Команда вайтлиста: %s" % conf["template"]]
             self.tg.send(chat_id, "\n".join(lines))
             return True
+        if cmd in ("/eva", "/ева"):
+            return eva.handle(self, chat_id, arg)
         if cmd in ("/wl", "/whitelist", "/вайтлист"):
             chunks = arg.split()
             sub = chunks[0].lower() if chunks else ""
