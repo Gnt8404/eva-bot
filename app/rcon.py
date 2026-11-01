@@ -460,6 +460,15 @@ def _clean_log_lines(text, limit=2500):
     return result
 
 
+def _panel_state(conf):
+    """Состояние сервера по API панели: running/starting/stopping/offline."""
+    try:
+        data = _panel_api(conf, "/resources")
+        return str(((data.get("attributes") or {}).get("current_state")) or "").lower()
+    except Exception:
+        return ""
+
+
 def panel_run(store, cmd, timeout=12):
     """Команда через client API панели (Pterodactyl) + вывод из консоли.
 
@@ -470,6 +479,10 @@ def panel_run(store, cmd, timeout=12):
     conf = panel_cfg(store)
     if not (conf["url"] and conf["key"] and conf["server"] and conf["on"]):
         return None
+    state = _panel_state(conf)
+    if state and state != "running":
+        return False, ("сервер сейчас «%s» — команда не отправлена, "
+                       "подожди, пока он запустится" % state)
     try:
         before = _panel_log_size(conf)
     except Exception:
