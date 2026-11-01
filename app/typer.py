@@ -68,6 +68,12 @@ class Typewriter:
             self._done = True
             self._cv.notify_all()
             start = self._thread is None
+        if not self.animate:
+            # Печать выключена — отправляем сразу целиком, без потока и правок.
+            pending = self._text
+            if pending.strip():
+                self._final(pending)
+            return self._message_id
         if start:
             self._start_thread()
         if self._thread is not None:
@@ -123,7 +129,7 @@ class Typewriter:
                     continue
                 if text:
                     self._step(text, done)
-                if done and (self._shown >= len(text) or not text):
+                if done and (not self.animate or self._shown >= len(text) or not text):
                     self._final(text)
                     return
                 with self._cv:

@@ -578,6 +578,7 @@ def main():
     log.info("меню при старте (%d): %s", len(logic.MENU_TITLES),
              " | ".join(logic.MENU_TITLES))
     log.info("файл логики: %s", logic.__file__)
+    log.info("плавная печать: %s", "вкл" if config.TYPE_ANIMATION else "выкл")
     log.info("знания о сервере: %d записей (%s)", kb.count(),
              ", ".join(kb.sources()) or "нет")
     touch_heartbeat()

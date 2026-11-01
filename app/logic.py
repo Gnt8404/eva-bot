@@ -1982,7 +1982,7 @@ class Bot:
         messages.append({"role": "user", "content": question})
 
         writer = None
-        if stream_to:
+        if stream_to and config.TYPE_ANIMATION:
             writer = Typewriter(self.tg, stream_to, reply_to=reply_to,
                                 keyboard=keyboard, group=group)
         text = ai.chat(messages, on_delta=(writer.feed if writer else None), strip=not emoji)
