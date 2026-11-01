@@ -136,6 +136,18 @@ RCON_PASS = os.environ.get("RCON_PASS", "").strip()
 RCON_ON = os.environ.get("RCON_ON", "on").strip().lower() not in (
     "off", "0", "нет", "no", "false")
 
+# ---------- панель хостинга (Pterodactyl/Pelican client API) ----------
+# Если RCON недоступен снаружи, бот может выполнять команды через API панели:
+# PANEL_URL=https://mgr.hosting-minecraft.pro
+# PANEL_KEY=<client API key из панели>
+# PANEL_SERVER=<uuid сервера>  (или PANEL_SERVER_ID — короткий id)
+PANEL_URL = os.environ.get("PANEL_URL", "").strip().rstrip("/")
+PANEL_KEY = os.environ.get("PANEL_KEY", "").strip()
+PANEL_SERVER = (os.environ.get("PANEL_SERVER", "")
+                or os.environ.get("PANEL_SERVER_ID", "")).strip()
+PANEL_ON = os.environ.get("PANEL_ON", "on").strip().lower() not in (
+    "off", "0", "нет", "no", "false")
+
 os.makedirs(DATA_DIR, exist_ok=True)
 
 

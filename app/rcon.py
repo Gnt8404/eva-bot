@@ -214,11 +214,15 @@ def agent_cfg(store):
 
 
 def panel_cfg(store):
+    from . import config
     return {
-        "url": (store.get("panel_url") or "").strip().rstrip("/"),
-        "key": (store.get("panel_key") or "").strip(),
-        "server": (store.get("panel_server") or "").strip(),
-        "on": store.flag("panel_on", "on") == "on",
+        "url": ((store.get("panel_url") or "").strip().rstrip("/")
+                or config.PANEL_URL),
+        "key": (store.get("panel_key") or "").strip() or config.PANEL_KEY,
+        "server": ((store.get("panel_server") or "").strip()
+                   or (store.get("panel_server_id") or "").strip()
+                   or config.PANEL_SERVER),
+        "on": store.flag("panel_on", "on" if config.PANEL_ON else "off") == "on",
     }
 
 
