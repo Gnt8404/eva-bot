@@ -383,8 +383,22 @@ class Bot:
         if not addrs:
             text = "Адрес сервера ещё не задан администратором."
         else:
+            # Java и Bedrock проверяем параллельно: Bedrock-пинг снаружи
+            # часто висит до таймаута, а статус нужен быстро.
+            bed_holder = {}
+
+            def _bed_work():
+                try:
+                    bed_holder["snap"] = mc.bedrock_snapshot(self.db.bedrock_addr(), timeout=2)
+                except Exception as exc:  # noqa: BLE001
+                    log.debug("bedrock-пинг: %s", exc)
+                    bed_holder["snap"] = None
+
+            bed_thread = threading.Thread(target=_bed_work, daemon=True)
+            bed_thread.start()
             snap = mc.best_snapshot(addrs)
-            bed = mc.bedrock_snapshot(self.db.bedrock_addr())
+            bed_thread.join(timeout=2.5)
+            bed = bed_holder.get("snap")
             if snap.get("online"):
                 text = mc.status_text(snap)
                 if bed and bed.get("online"):
