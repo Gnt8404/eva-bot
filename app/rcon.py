@@ -429,6 +429,20 @@ def _panel_read_log_from(conf, offset):
     return raw.decode("utf-8", "replace")
 
 
+def _panel_read_log_tail(conf, limit_bytes=6000):
+    """Хвост latest.log — надёжный запасной путь, если не удалось отследить размер."""
+    data = _panel_api(conf, "/files/download?file=%2Flogs%2Flatest.log")
+    url = ((data.get("attributes") or {}).get("url") or "").strip()
+    if not url:
+        return ""
+    try:
+        with urllib.request.urlopen(url, timeout=PANEL_API_TIMEOUT) as resp:
+            raw = resp.read()
+    except (urllib.error.URLError, OSError):
+        return ""
+    return raw[-limit_bytes:].decode("utf-8", "replace")
+
+
 def _clean_log_lines(text, limit=2500):
     lines = []
     for line in (text or "").splitlines():
@@ -437,7 +451,13 @@ def _clean_log_lines(text, limit=2500):
             continue
         line = LOG_PREFIX.sub("", line)
         lines.append(line)
-    return "\n".join(lines).strip()[:limit]
+    result = "\n".join(lines).strip()
+    if len(result) > limit:
+        result = result[-limit:]          # для консоли важен конец вывода, а не начало
+        start = result.find("\n")
+        if 0 < start < len(result) - 1:
+            result = result[start + 1:]
+    return result
 
 
 def panel_run(store, cmd, timeout=12):
@@ -482,11 +502,8 @@ def panel_run(store, cmd, timeout=12):
             break
         time.sleep(0.7)
     if not text.strip():
-        try:
-            now = _panel_log_size(conf) or 0
-            text = _panel_read_log_from(conf, max(0, now - 4000))
-        except Exception:
-            text = ""
+        # не смогли поймать прирост файла — показываем хотя бы хвост консоли
+        text = _panel_read_log_tail(conf)
     clean = _clean_log_lines(text)
     if not clean:
         clean = "команда отправлена панелью, вывода в консоли нет"
