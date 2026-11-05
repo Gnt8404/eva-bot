@@ -16,7 +16,7 @@ from .tg import esc, keyboard
 
 log = logging.getLogger("autopost")
 
-COMMANDS = {"/post", "/пост", "/autopost", "/ap", "/autoreply", "/ar"}
+COMMANDS = {"/autoreply", "/ar"}
 PREFIX = "ap:"
 LOCK_ID = int(getattr(config, "AUTOPOST_CHANNEL_ID", 0) or 0)
 SIGNATURE = getattr(config, "AUTOPOST_SIGNATURE", "<Eva ии помощница>")
@@ -163,8 +163,38 @@ def panel_kb(store):
     ])
 
 
+def reply_panel_text(store):
+    rs = rules(store)
+    default = store.get(DEFAULT_KEY) or ""
+    return ("Автоответы в личке\n\n"
+            "Включены: %s\n"
+            "Правил: %d\n"
+            "Ответ по умолчанию: %s\n\n"
+            "Настройка:\n"
+            "/ar on | /ar off\n"
+            "/ar добавить привет,здравствуй|Здравствуй! Чем помочь?\n"
+            "/ar по-умолчанию <текст>\n"
+            "/ar список, /ar удалить N"
+            % ("вкл" if flag(store, REPLY_ON_KEY) else "выкл", len(rs),
+               (default or "не задан")[:120]))
+
+
+def reply_panel_kb(store):
+    return keyboard([
+        [("Автоответы: %s" % ("вкл" if flag(store, REPLY_ON_KEY) else "выкл"),
+          "ap:reply_on")],
+        [("Правила ответов", "ap:rules")],
+        [("Админ-панель", "adm:home")],
+    ])
+
+
+def reply_panel(bot, chat_id, uid=None):
+    bot.tg.send(chat_id, reply_panel_text(bot.db),
+                keyboard=reply_panel_kb(bot.db))
+
+
 def panel(bot, chat_id, uid=None):
-    bot.tg.send(chat_id, panel_text(bot.db), keyboard=panel_kb(bot.db))
+    reply_panel(bot, chat_id, uid)
 
 
 def help_text():

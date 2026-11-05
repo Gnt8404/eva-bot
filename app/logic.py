@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "8.5"
+CODE_VERSION = "9.0"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -85,7 +85,8 @@ def admin_panel_kb(is_super=False):
     else:
         rows.append([("Статистика", "adm:stats")])
     rows += [
-        [("Баны и разбаны", "adm:bans"), ("Посты и автоответы", "adm:autopost")],
+        [("Баны и разбаны", "adm:bans"), ("Автоответы", "adm:autopost")],
+        [("Аккаунты", "adm:accounts")],
         [("Консоль", "adm:console")],
         [("Статус сервера", "adm:status")],
         [("Обновить", "adm:home"), ("Закрыть", "adm:close")],
@@ -145,7 +146,7 @@ ADMIN_ONLY = {
     "/console", "/cmd", "/консоль", "/rcon", "/wl", "/whitelist", "/вайтлист",
     "/ban", "/бан", "/забанить", "/unban", "/pardon", "/разбан", "/разбанить",
     "/banlist", "/баны", "/банлист",
-    "/post", "/пост", "/autopost", "/ap", "/autoreply", "/ar",
+    "/autoreply", "/ar",
     "/ub", "/userbot",
     "/kb", "/знания",
     "/moder", "/модерация", "/фильтр", "/check", "/проверка",
@@ -278,6 +279,7 @@ class Bot:
         self._rcon_tick = 0
         self.userbot = userbot.Userbot(self)
         self.userbots = {}
+        self._bot_spam = {}
         threading.Thread(target=self._load_userbots, daemon=True,
                          name="userbots-load").start()
         self.admin_aliases = {}
@@ -407,13 +409,7 @@ class Bot:
             elif "callback_query" in upd:
                 self.on_callback(upd["callback_query"])
             elif "channel_post" in upd:
-                post = upd["channel_post"]
-                chat = post.get("chat") or {}
-                if not autopost.channels(self.db):
-                    autopost.add_chat(self.db, chat, single=True)
-                    log.info("канал для постов подключён: %s (%s)",
-                             chat.get("title"), chat.get("id"))
-                self.on_message(post, is_channel=True)
+                self.on_message(upd["channel_post"], is_channel=True)
             elif "my_chat_member" in upd:
                 self.on_membership(upd["my_chat_member"])
         except Exception as exc:
@@ -543,6 +539,11 @@ class Bot:
             return
         self.db.touch_user(user, chat_id, is_admin=self.db.is_admin(user.get("id"), user.get("username")))
         self.db.touch_chat(chat, user)
+        try:
+            if user.get("id"):
+                self.db.set("owner_active_%s" % user.get("id"), str(int(time.time())))
+        except Exception:
+            pass
         self._promote_pending_admins(user, chat_id)
 
         if is_group or is_channel:
@@ -778,14 +779,6 @@ class Bot:
     def handle_private(self, msg, text, user):
         chat_id = msg["chat"]["id"]
         uid = user.get("id")
-        fwd = autopost.channel_from_forward(msg)
-        if fwd and self.db.is_admin(uid, user.get("username")):
-            item = autopost.add_chat(self.db, fwd, single=True)
-            if item:
-                self.tg.send(chat_id, "Канал «%s» подключён для постов. Только он.\n"
-                                      "Текст: /post текст ...\nОпубликовать: /post отправить"
-                             % item.get("title"))
-                return
         state = self.state.get(uid)
 
         if state and text.lower() in ("отмена", "/cancel", "назад", "стоп"):
@@ -990,6 +983,9 @@ class Bot:
             self.tg.send(chat_id, entry.render(), keyboard=BACK_MENU)
             return True
 
+        if cmd in ("/post", "/пост", "/autopost", "/ap"):
+            self.tg.send(chat_id, "Функция постов отключена. Остались автоответы: /ar")
+            return True
         if autopost.is_command(cmd):
             autopost.handle_command(self, msg, text, chat_id, user, cmd, arg)
             return True
@@ -2082,6 +2078,10 @@ class Bot:
                 and not question.startswith("/")):
             auto = autopost.match_reply(self.db, question)
             if auto:
+                if not self._bot_spam_ok(uid0, question):
+                    traces.trace({"kind": "autoreply_spam", "uid": uid0,
+                                  "text": guard.safe_for_log(question)})
+                    return "", True
                 traces.trace({"kind": "autoreply", "uid": uid0, "role": role,
                               "text": guard.safe_for_log(question)})
                 return auto, False
@@ -2719,7 +2719,24 @@ class Bot:
         elif action == "bans":
             self.admin_bans(chat_id)
         elif action == "autopost":
-            autopost.panel(self, chat_id, uid)
+            autopost.reply_panel(self, chat_id, uid)
+        elif action == "accounts":
+            lines = ["Личные аккаунты (только для админов)", ""]
+            pairs = [(config.SUPER_ADMIN, self.userbot)]
+            pairs += list(self.userbots.items())
+            for acc_uid, ub in pairs:
+                try:
+                    state = {"connected": "подключён", "off": "выключен",
+                             "starting": "запускается", "error": "ошибка",
+                             "await_qr": "ждёт QR", "await_password": "ждёт пароль",
+                             "await_code": "ждёт код"}.get(ub.status, ub.status)
+                    lines.append("%s — %s" % (acc_uid, state))
+                except Exception:
+                    continue
+            lines += ["", "Подключить/переподключить: /connect",
+                      "Пароль 2FA: /password <пароль>",
+                      "Отключить: /connect off | /connect logout"]
+            self.tg.send(chat_id, "\n".join(lines))
         elif action == "banhelp":
             self.tg.send(chat_id,
                          "Забанить игрока\n\n"
@@ -2774,6 +2791,30 @@ class Bot:
             self.tg.send(chat_id, "Панель закрыта. Открыть снова: /admin",
                          keyboard=ADMIN_MAIN_MENU)
 
+    def _bot_spam_ok(self, uid, text):
+        """Антиспам для лички самого бота: 1/15с, 3/мин, 10/час, повторы 10 мин."""
+        now = time.time()
+        rec = self._bot_spam.setdefault(uid, {"times": [], "texts": {}})
+        times = [x for x in rec["times"] if now - x < 86400]
+        rec["times"] = times
+        if times and now - times[-1] < 15:
+            return False
+        if sum(1 for x in times if now - x < 60) >= 3:
+            return False
+        if sum(1 for x in times if now - x < 3600) >= 10:
+            return False
+        norm = " ".join((text or "").lower().split())[:300]
+        texts = rec["texts"]
+        for key, ts in list(texts.items()):
+            if now - ts > 600:
+                texts.pop(key, None)
+        if norm and norm in texts:
+            return False
+        times.append(now)
+        if norm:
+            texts[norm] = now
+        return True
+
     # ---------------------------------------------------- аккаунты людей
     USERBOTS_MAX = 10
 
@@ -2822,6 +2863,10 @@ class Bot:
         if chat_type != "private":
             self.tg.send(chat_id, "Подключение аккаунта — только в личке с ботом.")
             return True
+        role = self.db.role(uid, user.get("username"))
+        if role not in ("owner", "admin"):
+            self.tg.send(chat_id, "Подключение личного аккаунта — только для админов.")
+            return True
         ub = self._get_userbot(uid)
         if ub is None:
             self.tg.send(chat_id, "Лимит подключённых аккаунтов (%d). Попробуй позже."
@@ -2866,6 +2911,18 @@ class Bot:
             self.tg.send(chat_id, "Автоответы аккаунта: %s"
                          % ("вкл" if ub.autoreply else "выкл"))
             return True
+        if sub in ("pause", "online", "пауза"):
+            if rest.lower() in ("on", "вкл", "включить"):
+                ub.pause_when_online = True
+            elif rest.lower() in ("off", "выкл", "выключить"):
+                ub.pause_when_online = False
+            else:
+                self.tg.send(chat_id, "Напиши: /connect pause on|off")
+                return True
+            ub._save_settings()
+            self.tg.send(chat_id, "Пауза, когда владелец онлайн: %s"
+                         % ("вкл" if ub.pause_when_online else "выкл"))
+            return True
         if sub in ("antispam", "антиспам"):
             if rest.lower() in ("on", "вкл", "включить"):
                 ub.antispam = True
@@ -2900,6 +2957,9 @@ class Bot:
 
     def _password_command(self, msg, text, chat_id, user, arg):
         uid = user.get("id")
+        if self.db.role(uid, user.get("username")) not in ("owner", "admin"):
+            self.tg.send(chat_id, "Пароль аккаунта — только для админов.")
+            return True
         ub = self.userbot if uid == config.SUPER_ADMIN else self.userbots.get(uid)
         if ub is None:
             self.tg.send(chat_id, "Сначала подключи аккаунт: /connect")

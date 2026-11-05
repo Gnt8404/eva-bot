@@ -27,6 +27,7 @@ import time
 
 try:
     from telethon import TelegramClient, events
+    from telethon.tl.types import UserStatusOffline, UserStatusOnline
     from telethon.errors import SessionPasswordNeededError
     from telethon.sessions import StringSession
     HAS_TELETHON = True
@@ -64,6 +65,8 @@ class Userbot:
         self._spam = {}
         self._global_replies = deque(maxlen=200)
         self.antispam = True
+        self.pause_when_online = True
+        self.owner_online = False
         self.settings = {}
         self.session = ""
         self.api_id = getattr(config, "TELEGRAM_API_ID", 0) or 0
@@ -90,6 +93,7 @@ class Userbot:
             self.enabled = self.settings.get("enabled", "on") != "off"
             self.autoreply = self.settings.get("autoreply", "on") != "off"
             self.antispam = self.settings.get("antispam", "on") != "off"
+            self.pause_when_online = self.settings.get("pause_when_online", "on") != "off"
         except Exception as exc:  # noqa: BLE001
             log.info("userbot настройки не загрузились: %s", exc)
         if self.session and self.api_id and self.api_hash and self.enabled:
@@ -113,7 +117,8 @@ class Userbot:
         data = {"api_id": self.api_id, "api_hash": self.api_hash,
                 "phone": self.phone, "enabled": "on" if self.enabled else "off",
                 "autoreply": "on" if self.autoreply else "off",
-                "antispam": "on" if self.antispam else "off"}
+                "antispam": "on" if self.antispam else "off",
+                "pause_when_online": "on" if self.pause_when_online else "off"}
         self.settings.update(data)
         persist.write_text(self.store, self.settings_file,
                            json.dumps(data, ensure_ascii=False))
@@ -183,6 +188,24 @@ class Userbot:
 
     def _bind(self, client):
         client.add_event_handler(self._on_new_message, events.NewMessage(incoming=True))
+        try:
+            client.add_event_handler(self._on_user_status, events.UserUpdate)
+        except Exception as exc:  # noqa: BLE001
+            log.info("статус владельца недоступен: %s", exc)
+
+    async def _on_user_status(self, event):
+        try:
+            if getattr(event, "user_id", None) != getattr(self.me, "id", None):
+                return
+            status = getattr(event, "status", None)
+            if isinstance(status, UserStatusOnline):
+                self.owner_online = True
+                log.info("userbot: владелец онлайн — автоответы на паузе")
+            elif isinstance(status, UserStatusOffline):
+                self.owner_online = False
+                log.info("userbot: владелец офлайн — автоответы включены")
+        except Exception as exc:  # noqa: BLE001
+            log.info("user status: %s", exc)
 
     async def _on_new_message(self, event):
         """Автоответчик в личке на ЛИЧНОМ аккаунте (без команд)."""
@@ -201,6 +224,15 @@ class Userbot:
             text = (event.raw_text or "").strip()
             if not text or not self.autoreply:
                 return
+            if self.pause_when_online:
+                active = 0
+                try:
+                    active = float(self.store.get("owner_active_%s" % self.owner_uid) or 0)
+                except (TypeError, ValueError):
+                    active = 0
+                if self.owner_online or (time.time() - active < 300):
+                    log.info("userbot: владелец активен — пропуск автоответа")
+                    return
             now = time.time()
             last = self._last_reply.get(sender_id, 0)
             if now - last < 15:          # не чаще одного сообщения в 15 секунд
@@ -508,6 +540,8 @@ class Userbot:
         lines.append("api_id: %s" % ("есть" if self.api_id else "нет"))
         lines.append("Автоответы в личке: %s" % ("вкл" if self.autoreply else "выкл"))
         lines.append("Антиспам: %s" % ("вкл" if self.antispam else "выкл"))
+        lines.append("Пауза, когда владелец онлайн: %s"
+                     % ("вкл" if self.pause_when_online else "выкл"))
         try:
             text = (self.store.get("autoreply_default")
                     or getattr(config, "AUTOREPLY_DEFAULT_TEXT", ""))
