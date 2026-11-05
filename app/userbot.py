@@ -179,7 +179,7 @@ class Userbot:
         client.add_event_handler(self._on_new_message, events.NewMessage(incoming=True))
 
     async def _on_new_message(self, event):
-        """Автоответчик и базовые команды в личке на ЛИЧНОМ аккаунте."""
+        """Автоответчик в личке на ЛИЧНОМ аккаунте (без команд)."""
         if self.status != "connected":
             return
         try:
@@ -193,34 +193,13 @@ class Userbot:
             if me_id and sender_id == me_id:
                 return
             text = (event.raw_text or "").strip()
-            if not text:
-                return
-            if text.startswith("/g "):
-                await self._send_gif(event, text[3:].strip())
-                return
-            if text in ("/help", "/start", "/eva", "/помощь"):
-                await event.reply("Ева подключена к аккаунту.\n"
-                                  "Команды: /g <текст> — гифка, /ping, /id, /time.\n"
-                                  "Обычные сообщения — автоответ.")
-                return
-            if text == "/ping":
-                await event.reply("pong · «Eva ии помощница»")
-                return
-            if text == "/id":
-                await event.reply("id: %s" % event.chat_id)
-                return
-            if text == "/time":
-                await event.reply(time.strftime("%H:%M:%S · «Eva ии помощница»"))
-                return
-            if text.startswith("/"):
-                return
-            if not self.autoreply:
+            if not text or not self.autoreply:
                 return
             now = time.time()
             last = self._last_reply.get(sender_id, 0)
-            if now - last < 300:          # не чаще одного ответа в 5 минут одному человеку
+            if now - last < 15:          # не чаще одного сообщения в 15 секунд
                 return
-            reply = autopost.match_reply(self.store, text)
+            reply = autopost.reply_text(self.store, text)
             if not reply:
                 return
             await event.reply(reply)

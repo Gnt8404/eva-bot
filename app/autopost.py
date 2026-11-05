@@ -227,10 +227,8 @@ def _resolve_channel(bot, raw):
 
 
 # ------------------------------------------------------------------ автоответы
-def match_reply(store, text):
-    """Текст автоответа по правилам. None — если автоответы выключены."""
-    if not flag(store, REPLY_ON_KEY):
-        return None
+def reply_text(store, text):
+    """Текст автоответа без привязки к флагу бота (для userbot)."""
     low = (text or "").lower().replace("ё", "е")
     for rule in rules(store):
         keys = rule.get("keys") or []
@@ -239,6 +237,13 @@ def match_reply(store, text):
     default = (store.get(DEFAULT_KEY) or
                getattr(config, "AUTOREPLY_DEFAULT_TEXT", "")).strip()
     return _sign(default) if default else None
+
+
+def match_reply(store, text):
+    """Текст автоответа по правилам. None — если автоответы выключены."""
+    if not flag(store, REPLY_ON_KEY):
+        return None
+    return reply_text(store, text)
 
 
 # ------------------------------------------------------------------ команды
