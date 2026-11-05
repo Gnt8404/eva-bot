@@ -779,13 +779,13 @@ class Bot:
         parts = text.split()
         cmd = parts[0].split("@")[0].lower()
         arg = " ".join(parts[1:]).strip()
-        menu = None if group else (ADMIN_MAIN_MENU if is_admin else MAIN_MENU)
+        menu = MAIN_MENU if group else (ADMIN_MAIN_MENU if is_admin else MAIN_MENU)
 
         if cmd in ("/start", "/menu", "/меню"):
             hello = ("Я %s, ИИ-помощник сервера %s. Отвечаю фактами, без воды.\n"
                      "Выбери раздел кнопкой или просто напиши вопрос."
                      % (config.BOT_NAME, sinfo.get(self.db, "about")))
-            self.tg.send(chat_id, hello, keyboard=menu or (ADMIN_MAIN_MENU if is_admin else MAIN_MENU))
+            self.tg.send(chat_id, hello, keyboard=menu)
             return True
         if cmd in ("/help", "/помощь"):
             self.tg.send(chat_id, HELP_TEXT, keyboard=BACK_MENU)
@@ -959,6 +959,9 @@ class Bot:
                          % (", ".join(self.db.server_addrs()) or "не задан", self.db.bedrock_addr()))
             return True
         if cmd in ("/admins", "/админы", "/администраторы"):
+            if uid != config.SUPER_ADMIN:
+                self.tg.send(chat_id, "Список админов показывает только владелец.")
+                return True
             self.admin_admins(chat_id, uid)
             return True
         if cmd in ("/addadmin", "/addamin", "/add_admin", "/добавитьадмина"):
@@ -974,8 +977,9 @@ class Bot:
                              keyboard=self.admin_admins_kb(uid))
                 return True
             if self.db.add_admin(target):
-                persist.save_admins_async(self.db)
-                self.tg.send(chat_id, "Добавлен админ: %s" % target,
+                saved = persist.save_admins(self.db)
+                note = "" if saved else "\n(не сохранился на сервере — проверь панель/ключ)"
+                self.tg.send(chat_id, "Добавлен админ: %s%s" % (target, note),
                              keyboard=self.admin_admins_kb(uid))
             else:
                 self.tg.send(chat_id, "%s уже в списке админов." % target,
@@ -991,8 +995,9 @@ class Bot:
                                       "или укажи @username / числовой id.")
                 return True
             self.db.del_admin(target)
-            persist.save_admins_async(self.db)
-            self.tg.send(chat_id, "Убран: %s" % target,
+            saved = persist.save_admins(self.db)
+            note = "" if saved else "\n(не сохранился на сервере — проверь панель/ключ)"
+            self.tg.send(chat_id, "Убран: %s%s" % (target, note),
                          keyboard=self.admin_admins_kb(uid))
             return True
         if cmd == "/cooldown":
@@ -1116,7 +1121,7 @@ class Bot:
                 self.tg.send(chat_id, "Ник может содержать буквы, цифры, _ . - (до 16 символов).")
                 return True
             reason = reason.replace("\n", " ")[:100]
-            self.admin_server(chat_id, "ban %s %s" % (name, reason), refresh_bans=True)
+            self.admin_server(chat_id, "ban %s %s" % (name, reason), refresh_bans=True, uid=uid)
             return True
         if cmd in ("/unban", "/pardon", "/разбан", "/разбанить"):
             name = (arg.strip().split()[0] if arg.strip() else "")
@@ -1124,7 +1129,7 @@ class Bot:
                 self.tg.send(chat_id, "Напиши: /unban <ник>\n"
                                       "Список забаненных: /banlist")
                 return True
-            self.admin_server(chat_id, "pardon " + name, refresh_bans=True)
+            self.admin_server(chat_id, "pardon " + name, refresh_bans=True, uid=uid)
             return True
 
         if cmd == "/rcon":
@@ -1212,6 +1217,9 @@ class Bot:
                 self.tg.send(chat_id, "Канал агента: %s" % self.db.flag("agent_on", "on"))
                 return True
             if sub in ("panel", "панель") and rest:
+                if uid != config.SUPER_ADMIN:
+                    self.tg.send(chat_id, "Настройку панели может менять только владелец.")
+                    return True
                 if rest[0].startswith("http") and len(rest) >= 3:
                     self.db.set("panel_url", rest[0].rstrip("/"))
                     self.db.set("panel_key", rest[1])
@@ -2446,12 +2454,16 @@ class Bot:
 
     def admin_bans(self, chat_id):
         """Список забаненных и кнопки разбана (banned-players.json)."""
-        text = persist.read_text(self.db, "/banned-players.json")
+        conf = rcon.panel_cfg(self.db)
+        panel_ready = bool(conf["url"] and conf["key"] and conf["server"] and conf["on"])
+        text = persist.read_text(self.db, "/banned-players.json") if panel_ready else None
         lines = ["Баны и разбаны", ""]
         names = []
         if text is None:
-            lines.append("Не удалось получить список: панель не пускает "
-                         "(нужен новый API-ключ панели).")
+            if panel_ready:
+                lines.append("Не удалось получить список: панель/ключ недоступны.")
+            else:
+                lines.append("Канал панели не настроен — список банов недоступен.")
         else:
             try:
                 data = json.loads(text) if text.strip() else []
@@ -2471,7 +2483,7 @@ class Bot:
         rows.append([("Админ-панель", "adm:home")])
         self.tg.send(chat_id, "\n".join(lines), keyboard=keyboard(rows))
 
-    def admin_server(self, chat_id, cmd, refresh_bans=False):
+    def admin_server(self, chat_id, cmd, refresh_bans=False, uid=None):
         """Выполнить серверную команду в фоне (бан/разбан/др.) и ответить."""
         def work():
             try:
@@ -2492,11 +2504,11 @@ class Bot:
                 return
             self.tg.send(chat_id, "/%s\nКанал: %s\n\n%s"
                          % (cmd, channel or "—", (out or "(пусто)")[:3500]),
-                         keyboard=admin_panel_kb())
+                         keyboard=admin_panel_kb(uid == config.SUPER_ADMIN))
 
         self.pool.submit(work)
 
-    def admin_run(self, chat_id, cmd):
+    def admin_run(self, chat_id, cmd, uid=None):
         """Выполнить серверную команду из админ-панели в фоне."""
         def work():
             try:
@@ -2508,7 +2520,8 @@ class Bot:
                 self.tg.send(chat_id, "Не выполнено: %s" % (out or "нет ответа"))
                 return
             text = "/%s\nКанал: %s\n\n%s" % (cmd, channel or "—", out or "(пусто)")
-            self.tg.send(chat_id, text[:3500], keyboard=admin_panel_kb())
+            self.tg.send(chat_id, text[:3500],
+                         keyboard=admin_panel_kb(uid == config.SUPER_ADMIN))
 
         self.pool.submit(work)
 
@@ -2531,6 +2544,9 @@ class Bot:
         elif action == "bans":
             self.admin_bans(chat_id)
         elif action == "broadcast":
+            if not broadcast.allowed(uid, self, user.get("username")):
+                self.tg.answer_callback(cbq.get("id"), "Рассылка недоступна.", True)
+                return
             broadcast.room_panel(self, uid, chat_id)
         elif action == "banhelp":
             self.tg.send(chat_id,
@@ -2545,7 +2561,7 @@ class Bot:
             if not name:
                 return
             self.tg.answer_callback(cbq.get("id"), "Разбан: %s" % name)
-            self.admin_server(chat_id, "pardon " + name, refresh_bans=True)
+            self.admin_server(chat_id, "pardon " + name, refresh_bans=True, uid=uid)
         elif action == "console":
             self.admin_console(chat_id)
         elif action == "eva":
@@ -2574,14 +2590,16 @@ class Bot:
                 return
             who = action[4:]
             self.db.del_admin(who)
-            persist.save_admins_async(self.db)
+            saved = persist.save_admins(self.db)
             self.admin_admins(chat_id, uid)
+            if not saved:
+                self.tg.send(chat_id, "Изменение не сохранилось на сервере — проверь панель/ключ.")
         elif action.startswith("run:"):
             cmd = action[4:].strip()
             if not cmd:
                 return
             self.tg.answer_callback(cbq.get("id"), "Выполняю…")
-            self.admin_run(chat_id, cmd)
+            self.admin_run(chat_id, cmd, uid)
         elif action == "close":
             self.tg.send(chat_id, "Панель закрыта. Открыть снова: /admin",
                          keyboard=ADMIN_MAIN_MENU)
@@ -2602,7 +2620,7 @@ class Bot:
                              (who[1:].lower(),))
             if rows:
                 return str(rows[0]["user_id"])
-            return who
+            return None
         if who.lower().startswith("id") and who[2:].isdigit():
             return who[2:]
         return None

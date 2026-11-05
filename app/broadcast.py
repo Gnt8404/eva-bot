@@ -37,7 +37,7 @@ LOCK = threading.RLock()
 # ----------------------------------------------------------------------
 # доступ и черновик
 # ----------------------------------------------------------------------
-def allowed(uid, bot=None):
+def allowed(uid, bot=None, username=None):
     """Рассылка доступна владельцу и администраторам бота."""
     try:
         if int(uid) in config.BROADCAST_ADMINS:
@@ -46,7 +46,7 @@ def allowed(uid, bot=None):
         pass
     if bot is not None:
         try:
-            return bool(bot.db.is_admin(uid))
+            return bool(bot.db.is_admin(uid, username))
         except Exception:  # noqa: BLE001
             return False
     return False
@@ -424,10 +424,33 @@ def start(bot, uid, chat_id, panel_message_id=None):
         stop = threading.Event()
         STOP[uid] = stop
         RUNNING[uid] = {"done": 0, "total": len(rows), "ok": 0, "bad": []}
-    bid = bot.db.add_broadcast(uid, bot.db.chat_name(uid), draft.get("text") or "(фото)",
-                               rows)
-    threading.Thread(target=_run, args=(bot, uid, chat_id, panel_message_id, draft, rows,
-                                        stop, bid), daemon=True).start()
+    try:
+        bid = bot.db.add_broadcast(uid, bot.db.chat_name(uid),
+                                   draft.get("text") or "(фото)", rows)
+    except Exception as exc:  # noqa: BLE001
+        with LOCK:
+            STOP.pop(uid, None)
+            RUNNING.pop(uid, None)
+        bot.tg.send(chat_id, "Не удалось запустить рассылку: %s" % exc)
+        return
+
+    def _watch():
+        try:
+            _run(bot, uid, chat_id, panel_message_id, draft, rows, stop, bid)
+        except Exception as exc:  # noqa: BLE001
+            log.info("рассылка упала: %s", exc)
+        finally:
+            with LOCK:
+                STOP.pop(uid, None)
+                RUNNING.pop(uid, None)
+
+    try:
+        threading.Thread(target=_watch, daemon=True).start()
+    except Exception as exc:  # noqa: BLE001
+        with LOCK:
+            STOP.pop(uid, None)
+            RUNNING.pop(uid, None)
+        bot.tg.send(chat_id, "Не удалось запустить рассылку: %s" % exc)
 
 
 def _run(bot, uid, chat_id, panel_message_id, draft, rows, stop, bid):
@@ -507,7 +530,7 @@ CANCEL_WORDS = ("отмена", "/cancel", "стоп", "назад", "cancel")
 def capture(bot, msg, text, user):
     """Ловит следующее сообщение администратора, если панель его ждёт."""
     uid = (user or {}).get("id")
-    if not allowed(uid, bot):
+    if not allowed(uid, bot, (user or {}).get("username")):
         return False
     room = box(bot.db, uid)
     wait = room.wait()
@@ -653,7 +676,7 @@ def is_command(cmd):
 def handle_command(bot, msg, text, chat_id, user, cmd):
     uid = user.get("id")
     chat_type = (msg.get("chat") or {}).get("type") or "private"
-    if not allowed(uid, bot):
+    if not allowed(uid, bot, user.get("username")):
         bot.tg.send(chat_id, "Рассылка доступна только администрации сервера.")
         return True
     if chat_type != "private":
@@ -717,7 +740,7 @@ def handle_callback(bot, data, chat_id, user, cbq):
     uid = (user or {}).get("id")
     msg = cbq.get("message") or {}
     message_id = msg.get("message_id")
-    if not allowed(uid, bot):
+    if not allowed(uid, bot, user.get("username")):
         bot.tg.answer_callback(cbq.get("id"), "Рассылка доступна только администрации.", True)
         return True
     action = data[3:]
@@ -832,8 +855,11 @@ def handle_callback(bot, data, chat_id, user, cbq):
     if action == "go2":
         bot.tg.answer_callback(cbq.get("id"), "Запускаю…")
         room.set_wait("")
-        bot.tg.edit(chat_id, message_id, "Рассылка запущена.",
-                    keyboard=keyboard([[("Остановить отправку", "bc:stop")]]))
+        try:
+            bot.tg.edit(chat_id, message_id, "Рассылка запущена.",
+                        keyboard=keyboard([[("Остановить отправку", "bc:stop")]]))
+        except Exception as exc:  # noqa: BLE001
+            log.info("подтверждение рассылки не обновилось: %s", exc)
         start(bot, uid, chat_id, message_id)
         return True
     if action == "stop":

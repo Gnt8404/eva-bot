@@ -31,6 +31,8 @@ def load_admins(store, attempts=2, timeout=6):
     conf = _conf(store)
     if not conf:
         return False
+    if store.get("admins") is not None:
+        return True   # список уже есть в базе — файл не должен его затирать
     last_error = None
     for attempt in range(max(1, attempts)):
         try:

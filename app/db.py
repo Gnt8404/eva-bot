@@ -263,14 +263,11 @@ class Store:
         return True
 
     def is_admin(self, uid, username=None):
+        # username оставлен только для совместимости вызовов: доверяем лишь id,
+        # иначе занявший чужой @ник получил бы права администратора.
         if uid == config.SUPER_ADMIN:
             return True
-        items = self.admins()
-        if str(uid) in items:
-            return True
-        if username and ("@" + username.lower()) in [a.lower() for a in items]:
-            return True
-        return False
+        return str(uid) in self.admins()
 
     # ---------- пользователи ----------
     def touch_user(self, user, chat_id=None, is_admin=False):
