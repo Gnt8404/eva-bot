@@ -195,7 +195,7 @@ class Userbot:
             if sender is None or getattr(sender, "bot", False):
                 return
             me_id = getattr(self.me, "id", None)
-            sender_id = getattr(sender, "id", None)
+            sender_id = getattr(sender, "id", None) or getattr(event, "chat_id", None)
             if me_id and sender_id == me_id:
                 return
             text = (event.raw_text or "").strip()
@@ -245,11 +245,8 @@ class Userbot:
                 texts.pop(key, None)
         if norm and norm in texts:
             return False
-        # общий предохранитель: не больше 20 ответов в минуту со всех чатов
-        while self._global_replies and now - self._global_replies[0] > 60:
-            self._global_replies.popleft()
-        if len(self._global_replies) >= 20:
-            return False
+        # Общего лимита нет: лимиты считаются отдельно для каждого человека,
+        # чтобы активный собеседник не блокировал ответы остальным.
         return True
 
     def _remember_reply(self, sender_id, text, now):
@@ -259,7 +256,6 @@ class Userbot:
         norm = " ".join((text or "").lower().split())[:300]
         if norm:
             rec["texts"][norm] = now
-        self._global_replies.append(now)
 
     async def _send_gif(self, event, text):
         """Сделать простую анимированную GIF с текстом и отправить."""
