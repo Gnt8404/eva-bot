@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "8.3"
+CODE_VERSION = "8.4"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -2844,7 +2844,15 @@ class Bot:
         if sub in ("on", "вкл", "включить"):
             ub.enabled = True
             ub._save_settings()
-            self.tg.send(chat_id, "Аккаунт включён.")
+            if not ub.session:
+                self.tg.send(chat_id, "Сессии нет — подключи заново: /connect")
+                return True
+            if ub.status == "connected":
+                self.tg.send(chat_id, "Аккаунт уже подключён.")
+                return True
+            threading.Thread(target=ub._boot, daemon=True,
+                             name="userbot-on").start()
+            self.tg.send(chat_id, "Включаю сессию… Проверь через минуту: /connect status")
             return True
         if sub in ("autoreply", "автоответы"):
             if rest.lower() in ("on", "вкл", "включить"):
