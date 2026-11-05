@@ -67,6 +67,7 @@ class Userbot:
         self.antispam = True
         self.pause_when_online = True
         self.owner_online = False
+        self._pending_replies = []
         self.settings = {}
         self.session = ""
         self.api_id = getattr(config, "TELEGRAM_API_ID", 0) or 0
@@ -203,7 +204,9 @@ class Userbot:
                 log.info("userbot: владелец онлайн — автоответы на паузе")
             elif isinstance(status, UserStatusOffline):
                 self.owner_online = False
-                log.info("userbot: владелец офлайн — автоответы включены")
+                log.info("userbot: владелец офлайн — автоответы включены, "
+                         "отправляю накопленные")
+                asyncio.create_task(self._flush_pending())
         except Exception as exc:  # noqa: BLE001
             log.info("user status: %s", exc)
 
@@ -231,7 +234,8 @@ class Userbot:
                 except (TypeError, ValueError):
                     active = 0
                 if self.owner_online or (time.time() - active < 300):
-                    log.info("userbot: владелец активен — пропуск автоответа")
+                    log.info("userbot: владелец активен — сообщение в очередь")
+                    self._queue_pending(sender_id, text)
                     return
             now = time.time()
             last = self._last_reply.get(sender_id, 0)
@@ -256,6 +260,40 @@ class Userbot:
                 pass
         except Exception as exc:  # noqa: BLE001
             log.info("userbot автоответ не отправлен: %s", exc)
+
+    def _queue_pending(self, sender_id, text):
+        try:
+            if len(self._pending_replies) >= 50:
+                self._pending_replies.pop(0)
+            norm = (text or "").strip().lower()
+            for sid, old, _ts in self._pending_replies:
+                if sid == sender_id and (old or "").strip().lower() == norm:
+                    return
+            self._pending_replies.append((sender_id, text, time.time()))
+        except Exception:
+            pass
+
+    async def _flush_pending(self):
+        """Владелец вышел из сети — сразу отвечаем всем, кто писал."""
+        if not self.client or self.status != "connected":
+            return
+        pending, self._pending_replies = self._pending_replies, []
+        now = time.time()
+        for sender_id, text, ts in pending:
+            if now - ts > 900:
+                continue
+            try:
+                reply = autopost.reply_text(self.store, text)
+                if not reply:
+                    continue
+                if self.antispam and not self._spam_allowed(sender_id, text, now):
+                    continue
+                await self.client.send_message(sender_id, reply)
+                self._last_reply[sender_id] = now
+                self._remember_reply(sender_id, text, now)
+                log.info("userbot: отложенный автоответ %s", sender_id)
+            except Exception as exc:  # noqa: BLE001
+                log.info("userbot: отложенный ответ не отправлен: %s", exc)
 
     def _spam_allowed(self, sender_id, text, now):
         """Лимиты: 1/15с, 3/мин, 10/час, 30/сутки; повторы — раз в 10 минут."""
