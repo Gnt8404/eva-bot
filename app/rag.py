@@ -140,10 +140,10 @@ class _Index:
         self.loaded_at = stat.st_mtime
         return bool(self.chunks)
 
-    def bm25(self, query, k=4):
+    def bm25(self, query, k=4, expand=True):
         if not self.load():
             return []
-        q = tokens(query, expand=True)
+        q = tokens(query, expand=expand)
         if not q:
             return []
         n = len(self.chunks)
@@ -182,16 +182,36 @@ INDEX = _Index()
 
 
 def search(query, k=4):
-    """Сначала Qdrant (если настроен и жив), иначе BM25."""
+    """Гибрид: кандидаты из Qdrant + BM25, реранг по честной BM25-оценке.
+
+    Hashing-векторы дают хороший recall, но шумный порядок; поэтому берём
+    объединение кандидатов и сортируем по BM25 (без синонимов), а если
+    BM25 пуст — по исходным синонимам и векторному сходству.
+    """
+    cand = {}
+    qdrant_scores = {}
     if getattr(config, "QDRANT_URL", ""):
         try:
             from . import qdrant
-            found = qdrant.search(query, k=k)
-            if found:
-                return found
+            for item in qdrant.search(query, k=max(k * 3, 8)):
+                cand[item.get("id")] = item
+                qdrant_scores[item.get("id")] = float(item.get("score") or 0)
         except Exception as exc:  # noqa: BLE001
             log.info("qdrant-поиск не сработал: %s", exc)
-    return INDEX.bm25(query, k=k)
+    for item in INDEX.bm25(query, k=max(k * 3, 8), expand=True):
+        cand.setdefault(item.get("id"), item)
+    if not cand:
+        return INDEX.bm25(query, k=k)
+    bm = {item["id"]: item["score"]
+          for item in INDEX.bm25(query, k=max(50, len(INDEX.chunks)), expand=False)}
+    if not bm:
+        bm = {item["id"]: item["score"]
+              for item in INDEX.bm25(query, k=max(50, len(INDEX.chunks)), expand=True)}
+    out = sorted(cand.values(),
+                 key=lambda it: (bm.get(it.get("id"), 0.0),
+                                 qdrant_scores.get(it.get("id"), 0.0)),
+                 reverse=True)
+    return out[:k]
 
 
 def context(query, k=4, limit=2600):

@@ -486,3 +486,4 @@ bash deploy/always-on.sh --status
   перезапускает сервер через панель; обычная фраза «перезапусти сервер» просит
   подтверждение и не выполняет действие молча.
 
+Qdrant: инструкции в [deploy/QDRANT.md](deploy/QDRANT.md), MCP-сервер — `tools/mcp_qdrant.py`.

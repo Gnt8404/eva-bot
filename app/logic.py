@@ -2021,12 +2021,16 @@ class Bot:
         reply = ""
         with Typing(self.tg, chat_id):
             context = self._gather(question)
-            if getattr(config, "RAG_ON", True):
+            rulesy = (intent.get("intent") in ("rules", "ticket")
+                      or re.search(r"(правил|бан|админ|обязан|санкц|жалоб|обжал|"
+                                   r"проверк|сборк|персональн|конфликт|whitelist|вайтлист)",
+                                   question or "", re.I))
+            rag_block, rag_ids = "", []
+            if getattr(config, "RAG_ON", True) and rulesy:
                 try:
                     rag_block, rag_ids = rag.context(question, k=getattr(config, "RAG_TOPK", 4))
                 except Exception as exc:  # noqa: BLE001
                     log.info("RAG не сработал: %s", exc)
-                    rag_block, rag_ids = "", []
                 context["rag"] = rag_block
                 context["rag_ids"] = rag_ids
             role_block = {
