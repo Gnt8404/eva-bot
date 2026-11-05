@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "7.1"
+CODE_VERSION = "7.2"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -2063,6 +2063,12 @@ class Bot:
             return ("Чтобы перезапустить сервер, напиши /restart confirm. "
                     "Это прервёт игру на 30-60 секунд.", False)
 
+        if re.search(r"(покажи|дай|скинь|где|какие|найди).{0,25}"
+                     r"(документ|документы|сборник|официальн\w*\s+документ)",
+                     question or "", re.I):
+            self.send_documents(chat_id)
+            return "Официальные документы Aetherlyn: %s" % config.DOCS_URL, False
+
         if (not group and uid0 and not self.db.is_admin(uid0, (user or {}).get("username"))
                 and not question.startswith("/")):
             auto = autopost.match_reply(self.db, question)
@@ -2070,12 +2076,6 @@ class Bot:
                 traces.trace({"kind": "autoreply", "uid": uid0, "role": role,
                               "text": guard.safe_for_log(question)})
                 return auto, False
-
-        if re.search(r"(покажи|дай|скинь|где|какие|найди).{0,25}"
-                     r"(документ|документы|сборник|официальн\w*\s+документ)",
-                     question or "", re.I):
-            self.send_documents(chat_id)
-            return "Официальные документы Aetherlyn: %s" % config.DOCS_URL, False
 
         direct = self._direct_answer(question)
         if direct:
