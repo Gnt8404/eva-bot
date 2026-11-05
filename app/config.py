@@ -163,6 +163,13 @@ AUTOPOST_SIGNATURE = os.environ.get("AUTOPOST_SIGNATURE",
                                     "<Eva ии помощница>").strip()
 AUTOPOST_CHANNEL_TITLE = os.environ.get("AUTOPOST_CHANNEL_TITLE",
                                         "⚚ Aetherlyn - 2 сезон ⚚").strip()
+# ---------- userbot (личный аккаунт, Telethon) ----------
+try:
+    TELEGRAM_API_ID = int(os.environ.get("TELEGRAM_API_ID", "0") or 0)
+except ValueError:
+    TELEGRAM_API_ID = 0
+TELEGRAM_API_HASH = os.environ.get("TELEGRAM_API_HASH", "").strip()
+
 AUTOREPLY_DEFAULT_TEXT = os.environ.get(
     "AUTOREPLY_DEFAULT_TEXT",
     "Здравствуйте! Я Ева, ИИ-помощница проекта Aetherlyn. "

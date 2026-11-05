@@ -176,6 +176,26 @@ def read_text(store, path, timeout=8):
         return None
 
 
+def write_text(store, path, text):
+    """Записать текстовый файл на диск сервера (через API панели)."""
+    conf = _conf(store)
+    if not conf:
+        return False
+    try:
+        body = (text or "").encode("utf-8")
+        url = "%s/api/client/servers/%s/files/write?file=%s" % (
+            conf["url"], conf["server"], urllib.parse.quote(path, safe=""))
+        headers = dict(rcon._panel_headers(conf))
+        headers["Content-Type"] = "text/plain; charset=utf-8"
+        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        log.info("не смог записать %s: %s", path, exc)
+        return False
+
+
 def save_admins(store):
     """Сохранить список админов на диск сервера. True — если записали."""
     conf = _conf(store)

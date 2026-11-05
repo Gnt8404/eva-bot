@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import (ai, autopost, config, crafts, guard, kb, mckb, mc, moder, music,
-               persist, rag, rcon, router, sinfo, tg, tools, traces, web)
+               persist, rag, rcon, router, sinfo, tg, tools, traces, userbot, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
 from .typer import Typewriter, smooth_send
@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "6.9"
+CODE_VERSION = "7.0"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -146,6 +146,7 @@ ADMIN_ONLY = {
     "/ban", "/бан", "/забанить", "/unban", "/pardon", "/разбан", "/разбанить",
     "/banlist", "/баны", "/банлист",
     "/post", "/пост", "/autopost", "/ap", "/autoreply", "/ar",
+    "/ub", "/userbot",
     "/kb", "/знания",
     "/moder", "/модерация", "/фильтр", "/check", "/проверка",
     "/addbad", "/delbad", "/badlist", "/badwords",
@@ -275,6 +276,7 @@ class Bot:
         self.last_poll = time.time()    # когда поллинг последний раз отвечал
         self._rcon_state = None         # последний результат проверки консоли
         self._rcon_tick = 0
+        self.userbot = userbot.Userbot(self)
         moder.reload(self.db.bad_words())
         self.me = self.tg.get_me()
         self.register_commands()
@@ -974,6 +976,9 @@ class Bot:
 
         if autopost.is_command(cmd):
             autopost.handle_command(self, msg, text, chat_id, user, cmd, arg)
+            return True
+        if userbot.is_command(cmd):
+            userbot.handle_command(self, msg, text, chat_id, user, arg)
             return True
         if cmd in ("/admin", "/админ"):
             if group:
