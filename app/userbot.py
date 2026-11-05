@@ -89,6 +89,9 @@ class Userbot:
             log.info("userbot настройки не загрузились: %s", exc)
         if self.session and self.api_id and self.api_hash and self.enabled:
             self.status = "starting"
+            # Пауза, чтобы старый процесс при деплое успел умереть: иначе
+            # Telegram отзывает auth key (AuthKeyUnregistered) из-за двух клиентов.
+            time.sleep(45)
             self._boot()
 
     def _load_settings(self):
@@ -145,6 +148,14 @@ class Userbot:
             self.status = "error"
             self.error = str(exc)[:300]
             log.info("userbot не подключился: %s", exc)
+            err = str(exc)
+            if "AuthKey" in err or "not logged in" in err.lower():
+                try:
+                    self.bot.tg.send(self.owner_uid,
+                        "Сессия аккаунта слетела (Telegram отозвал ключ). "
+                        "Подключи заново: /connect")
+                except Exception:
+                    pass
 
     async def _connect(self):
         try:
@@ -193,13 +204,13 @@ class Userbot:
                                   "Обычные сообщения — автоответ.")
                 return
             if text == "/ping":
-                await event.reply("pong · <Eva ии помощница>")
+                await event.reply("pong · «Eva ии помощница»")
                 return
             if text == "/id":
                 await event.reply("id: %s" % event.chat_id)
                 return
             if text == "/time":
-                await event.reply(time.strftime("%H:%M:%S · <Eva ии помощница>"))
+                await event.reply(time.strftime("%H:%M:%S · «Eva ии помощница»"))
                 return
             if text.startswith("/"):
                 return
@@ -240,7 +251,7 @@ class Userbot:
                     font = ImageFont.load_default()
                 x = 20 + step * 12
                 draw.text((x, 100), text, fill=(230, 236, 255), font=font)
-                draw.text((20, 220), "<Eva ии помощница>", fill=(120, 140, 180),
+                draw.text((20, 220), "«Eva ии помощница»", fill=(120, 140, 180),
                           font=ImageFont.load_default())
                 frames.append(img)
             path = os.path.join(config.DATA_DIR, "userbot_gif_%s.gif" % self.owner_uid)
@@ -276,6 +287,8 @@ class Userbot:
             return False, "Telethon не установлен."
         if not self.api_id or not self.api_hash:
             return False, "Сначала /ub api <id> <hash>."
+        if self.status == "connected":
+            return False, "Аккаунт уже подключён. Статус: /connect status"
         self._ensure_loop()
         self._qr_future = asyncio.run_coroutine_threadsafe(self._qr_flow(chat_id, chat_id),
                                                            self.loop)
@@ -283,7 +296,9 @@ class Userbot:
 
     async def _qr_flow(self, notify_chat, chat_id):
         try:
-            client = TelegramClient(StringSession(self.session), self.api_id,
+            # Новый QR-вход всегда создаёт свежую сессию: старый auth key мог
+            # быть отозван Telegram (AuthKeyUnregistered).
+            client = TelegramClient(StringSession(""), self.api_id,
                                     self.api_hash, device_model="Desktop",
                                     system_version="Windows 10",
                                     app_version="4.16.8")

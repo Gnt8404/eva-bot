@@ -160,7 +160,7 @@ try:
 except ValueError:
     AUTOPOST_CHANNEL_ID = -1004322573414
 AUTOPOST_SIGNATURE = os.environ.get("AUTOPOST_SIGNATURE",
-                                    "<Eva ии помощница>").strip()
+                                    "«Eva ии помощница»").strip()
 AUTOPOST_CHANNEL_TITLE = os.environ.get("AUTOPOST_CHANNEL_TITLE",
                                         "⚚ Aetherlyn - 2 сезон ⚚").strip()
 # ---------- официальные документы Aetherlyn ----------
