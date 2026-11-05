@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import threading
+from collections import deque
 import time
 
 try:
@@ -60,6 +61,9 @@ class Userbot:
         self._pw_q = None
         self._lock = threading.RLock()
         self._last_reply = {}
+        self._spam = {}
+        self._global_replies = deque(maxlen=200)
+        self.antispam = True
         self.settings = {}
         self.session = ""
         self.api_id = getattr(config, "TELEGRAM_API_ID", 0) or 0
@@ -85,6 +89,7 @@ class Userbot:
                                  or getattr(config, "TELEGRAM_API_HASH", ""))
             self.enabled = self.settings.get("enabled", "on") != "off"
             self.autoreply = self.settings.get("autoreply", "on") != "off"
+            self.antispam = self.settings.get("antispam", "on") != "off"
         except Exception as exc:  # noqa: BLE001
             log.info("userbot настройки не загрузились: %s", exc)
         if self.session and self.api_id and self.api_hash and self.enabled:
@@ -107,7 +112,8 @@ class Userbot:
     def _save_settings(self):
         data = {"api_id": self.api_id, "api_hash": self.api_hash,
                 "phone": self.phone, "enabled": "on" if self.enabled else "off",
-                "autoreply": "on" if self.autoreply else "off"}
+                "autoreply": "on" if self.autoreply else "off",
+                "antispam": "on" if self.antispam else "off"}
         self.settings.update(data)
         persist.write_text(self.store, self.settings_file,
                            json.dumps(data, ensure_ascii=False))
@@ -199,11 +205,15 @@ class Userbot:
             last = self._last_reply.get(sender_id, 0)
             if now - last < 15:          # не чаще одного сообщения в 15 секунд
                 return
+            if self.antispam and not self._spam_allowed(sender_id, text, now):
+                log.info("userbot антиспам: пропуск для %s", sender_id)
+                return
             reply = autopost.reply_text(self.store, text)
             if not reply:
                 return
             await event.reply(reply)
             self._last_reply[sender_id] = now
+            self._remember_reply(sender_id, text, now)
             log.info("userbot автоответ для %s (%s)", sender_id,
                      getattr(sender, "username", ""))
             try:
@@ -214,6 +224,42 @@ class Userbot:
                 pass
         except Exception as exc:  # noqa: BLE001
             log.info("userbot автоответ не отправлен: %s", exc)
+
+    def _spam_allowed(self, sender_id, text, now):
+        """Лимиты: 1/15с, 3/мин, 10/час, 30/сутки; повторы — раз в 10 минут."""
+        rec = self._spam.setdefault(sender_id, {"times": deque(maxlen=50),
+                                                "texts": {}})
+        times = rec["times"]
+        while times and now - times[0] > 86400:
+            times.popleft()
+        if len(times) >= 30:
+            return False
+        if sum(1 for t in times if now - t < 60) >= 3:
+            return False
+        if sum(1 for t in times if now - t < 3600) >= 10:
+            return False
+        norm = " ".join((text or "").lower().split())[:300]
+        texts = rec["texts"]
+        for key, ts in list(texts.items()):
+            if now - ts > 600:
+                texts.pop(key, None)
+        if norm and norm in texts:
+            return False
+        # общий предохранитель: не больше 20 ответов в минуту со всех чатов
+        while self._global_replies and now - self._global_replies[0] > 60:
+            self._global_replies.popleft()
+        if len(self._global_replies) >= 20:
+            return False
+        return True
+
+    def _remember_reply(self, sender_id, text, now):
+        rec = self._spam.setdefault(sender_id, {"times": deque(maxlen=50),
+                                                "texts": {}})
+        rec["times"].append(now)
+        norm = " ".join((text or "").lower().split())[:300]
+        if norm:
+            rec["texts"][norm] = now
+        self._global_replies.append(now)
 
     async def _send_gif(self, event, text):
         """Сделать простую анимированную GIF с текстом и отправить."""
@@ -465,6 +511,7 @@ class Userbot:
                 getattr(self.me, "username", self.me.id)))
         lines.append("api_id: %s" % ("есть" if self.api_id else "нет"))
         lines.append("Автоответы в личке: %s" % ("вкл" if self.autoreply else "выкл"))
+        lines.append("Антиспам: %s" % ("вкл" if self.antispam else "выкл"))
         try:
             text = (self.store.get("autoreply_default")
                     or getattr(config, "AUTOREPLY_DEFAULT_TEXT", ""))

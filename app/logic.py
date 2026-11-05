@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "8.1"
+CODE_VERSION = "8.2"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -2857,6 +2857,18 @@ class Bot:
             ub._save_settings()
             self.tg.send(chat_id, "Автоответы аккаунта: %s"
                          % ("вкл" if ub.autoreply else "выкл"))
+            return True
+        if sub in ("antispam", "антиспам"):
+            if rest.lower() in ("on", "вкл", "включить"):
+                ub.antispam = True
+            elif rest.lower() in ("off", "выкл", "выключить"):
+                ub.antispam = False
+            else:
+                self.tg.send(chat_id, "Напиши: /connect antispam on|off")
+                return True
+            ub._save_settings()
+            self.tg.send(chat_id, "Антиспам аккаунта: %s"
+                         % ("вкл" if ub.antispam else "выкл"))
             return True
         if sub in ("text", "текст"):
             if not rest:
