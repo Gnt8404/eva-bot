@@ -202,7 +202,8 @@ class Tg:
                 http_timeout=timeout + 20,
                 offset=offset,
                 timeout=timeout,
-                allowed_updates=["message", "edited_message", "callback_query", "channel_post"],
+                allowed_updates=["message", "edited_message", "callback_query", "channel_post",
+                             "my_chat_member"],
             )
             return res or []
         except TgError as exc:

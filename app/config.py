@@ -152,7 +152,18 @@ def check_secrets():
         missing.append("RM_AI_DEEPSEEK_KEY")
     return missing
 
+# ---------- посты / автоответы ----------
+# Разрешённый канал для постов (только он); подпись снизу сообщений.
+try:
+    AUTOPOST_CHANNEL_ID = int(os.environ.get("AUTOPOST_CHANNEL_ID",
+                                             "-1004322573414") or "-1004322573414")
+except ValueError:
+    AUTOPOST_CHANNEL_ID = -1004322573414
+AUTOPOST_SIGNATURE = os.environ.get("AUTOPOST_SIGNATURE",
+                                    "<Eva ии помощница>").strip()
+
 # ---------- RAG / защита / трейсы ----------
+
 RAG_ON = os.environ.get("RAG_ON", "on").strip().lower() not in ("off", "0", "no", "false")
 RAG_TOPK = int(os.environ.get("RAG_TOPK", "4") or 4)
 GUARD_ON = os.environ.get("GUARD_ON", "on").strip().lower() not in ("off", "0", "no", "false")

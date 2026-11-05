@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "6.8"
+CODE_VERSION = "6.7"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -253,6 +253,8 @@ class Bot:
         # Список админов хранится ещё и в файле на диске игрового сервера:
         # облачная база временная, а файл переживает перезапуск.
         persist.load_admins_async(self.db)
+        threading.Thread(target=persist.load_autopost, args=(self.db,),
+                         daemon=True, name="load-autopost").start()
         self.state = {}                       # user_id -> черновик формы
         self.cooldown = {}                    # (chat_id, user_id) -> время последнего вопроса
         self.warned = {}                      # (chat_id, user_id) -> время последнего предупреждения
@@ -397,7 +399,15 @@ class Bot:
             elif "callback_query" in upd:
                 self.on_callback(upd["callback_query"])
             elif "channel_post" in upd:
-                self.on_message(upd["channel_post"], is_channel=True)
+                post = upd["channel_post"]
+                chat = post.get("chat") or {}
+                if not autopost.channels(self.db):
+                    autopost.add_chat(self.db, chat, single=True)
+                    log.info("канал для постов подключён: %s (%s)",
+                             chat.get("title"), chat.get("id"))
+                self.on_message(post, is_channel=True)
+            elif "my_chat_member" in upd:
+                self.on_membership(upd["my_chat_member"])
         except Exception as exc:
             log.exception("ошибка обработки: %s", exc)
             try:
@@ -486,6 +496,31 @@ class Bot:
     # ------------------------------------------------------------------
     # сообщения
     # ------------------------------------------------------------------
+    def on_membership(self, upd):
+        """Бота добавили/повысили в канале — запоминаем канал для постов."""
+        chat = (upd or {}).get("chat") or {}
+        actor = (upd or {}).get("from") or {}
+        new = (upd or {}).get("new_chat_member") or {}
+        if chat.get("type") not in ("channel", "supergroup"):
+            return
+        if new.get("status") not in ("administrator", "creator"):
+            return
+        if (new.get("user") or {}).get("id") != (self.me or {}).get("id"):
+            return
+        if not self.db.is_admin(actor.get("id"), actor.get("username")):
+            return
+        item = autopost.add_chat(self.db, chat, single=True)
+        if not item:
+            return
+        log.info("канал для постов подключён через my_chat_member: %s", item)
+        try:
+            self.tg.send(config.SUPER_ADMIN,
+                         "Канал «%s» подключён для постов. Только он.\n"
+                         "Текст: /post текст ... | Опубликовать: /post отправить"
+                         % item.get("title"))
+        except Exception as exc:  # noqa: BLE001
+            log.info("не смог сообщить о канале: %s", exc)
+
     def on_message(self, msg, is_channel=False):
         if not msg:
             return
@@ -734,6 +769,14 @@ class Bot:
     def handle_private(self, msg, text, user):
         chat_id = msg["chat"]["id"]
         uid = user.get("id")
+        fwd = autopost.channel_from_forward(msg)
+        if fwd and self.db.is_admin(uid, user.get("username")):
+            item = autopost.add_chat(self.db, fwd, single=True)
+            if item:
+                self.tg.send(chat_id, "Канал «%s» подключён для постов. Только он.\n"
+                                      "Текст: /post текст ...\nОпубликовать: /post отправить"
+                             % item.get("title"))
+                return
         state = self.state.get(uid)
 
         if state and text.lower() in ("отмена", "/cancel", "назад", "стоп"):

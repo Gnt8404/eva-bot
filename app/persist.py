@@ -70,6 +70,70 @@ def _load_admins_once(store, conf, timeout=6):
         log.info("админы загружены из файла сервера (%d)", len(items))
     return True
 
+AUTOPOST_FILE = "/bot-data/autopost.json"
+AUTOPOST_KEYS = ["autopost_channels", "autopost_text", "autopost_on",
+                 "autoreply_on", "autoreply_rules", "autoreply_default"]
+
+
+def load_autopost(store):
+    """Восстановить настройки постов/автоответов с диска сервера."""
+    conf = _conf(store)
+    if not conf:
+        return False
+    try:
+        url = "%s/api/client/servers/%s/files/download?file=%s" % (
+            conf["url"], conf["server"], urllib.parse.quote(AUTOPOST_FILE, safe=""))
+        req = urllib.request.Request(url, headers=rcon._panel_headers(conf))
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        signed = ((data.get("attributes") or {}).get("url") or "").strip()
+        if not signed:
+            return False
+        with urllib.request.urlopen(signed, timeout=8) as resp:
+            payload = json.loads(resp.read().decode("utf-8", "replace"))
+        if isinstance(payload, dict):
+            for key, value in payload.items():
+                if key in AUTOPOST_KEYS and value:
+                    store.set(key, value if isinstance(value, str) else json.dumps(
+                        value, ensure_ascii=False))
+            log.info("настройки постов/автоответов загружены с сервера")
+        return True
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False
+        log.info("autopost с сервера не загружен: %s", exc)
+        return False
+    except Exception as exc:  # noqa: BLE001
+        log.info("autopost с сервера не загружен: %s", exc)
+        return False
+
+
+def save_autopost(store):
+    conf = _conf(store)
+    if not conf:
+        return False
+    payload = {key: store.get(key) for key in AUTOPOST_KEYS if store.get(key)}
+    try:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        url = "%s/api/client/servers/%s/files/write?file=%s" % (
+            conf["url"], conf["server"], urllib.parse.quote(AUTOPOST_FILE, safe=""))
+        headers = dict(rcon._panel_headers(conf))
+        headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        log.info("настройки постов/автоответов сохранены на сервере")
+        return True
+    except Exception as exc:  # noqa: BLE001
+        log.info("autopost не сохранился на сервере: %s", exc)
+        return False
+
+
+def save_autopost_async(store):
+    threading.Thread(target=save_autopost, args=(store,), daemon=True,
+                     name="save-autopost").start()
+
+
 def load_admins_async(store):
     """Загрузка в фоне: панель может отвечать медленно, старт бота не тормозим."""
     def work():

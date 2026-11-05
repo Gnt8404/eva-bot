@@ -11,12 +11,15 @@
 import json
 import logging
 
+from . import config
 from .tg import esc, keyboard
 
 log = logging.getLogger("autopost")
 
 COMMANDS = {"/post", "/пост", "/autopost", "/ap", "/autoreply", "/ar"}
 PREFIX = "ap:"
+LOCK_ID = int(getattr(config, "AUTOPOST_CHANNEL_ID", 0) or 0)
+SIGNATURE = getattr(config, "AUTOPOST_SIGNATURE", "<Eva ии помощница>")
 MAX_CHANNELS = 20
 MAX_RULES = 50
 
@@ -41,8 +44,18 @@ def _json_list(store, key):
 
 
 def channels(store):
-    return [c for c in _json_list(store, CHANNELS_KEY)
-            if isinstance(c, dict) and c.get("id")]
+    items = [c for c in _json_list(store, CHANNELS_KEY)
+             if isinstance(c, dict) and c.get("id")]
+    if LOCK_ID:
+        items = [c for c in items if int(c.get("id") or 0) == LOCK_ID]
+    return items
+
+
+def _sign(text):
+    text = (text or "").rstrip()
+    if SIGNATURE and SIGNATURE not in text:
+        text += "\n\n" + SIGNATURE
+    return text
 
 
 def rules(store):
@@ -50,8 +63,51 @@ def rules(store):
             if isinstance(r, dict) and r.get("text")]
 
 
+def add_chat(store, chat, single=False):
+    """Добавить канал для постов. single=True — оставить только его.
+
+    Если в конфиге закреплён конкретный канал (AUTOPOST_CHANNEL_ID), другие
+    игнорируются."""
+    cid = (chat or {}).get("id")
+    if not cid:
+        return None
+    if LOCK_ID and int(cid) != LOCK_ID:
+        return None
+    item = {"id": cid,
+            "title": (chat or {}).get("title") or (chat or {}).get("username") or str(cid)}
+    items = [] if single else [c for c in channels(store) if c.get("id") != cid]
+    items.append(item)
+    _save(store, CHANNELS_KEY, items)
+    return item
+
+
+def channel_from_forward(msg):
+    """Канал из пересланного в бота поста (forward_from_chat / forward_origin)."""
+    chat = (msg or {}).get("forward_from_chat")
+    if not chat and (msg or {}).get("forward_origin"):
+        origin = msg["forward_origin"] or {}
+        chat = origin.get("chat") or origin.get("sender_chat")
+    if not chat or (chat.get("type") not in ("channel", "supergroup")):
+        return None
+    return {"id": chat.get("id"), "title": chat.get("title") or chat.get("username")}
+
+
+def _persist(store):
+    try:
+        from . import persist
+        persist.save_autopost_async(store)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _set(store, key, value):
+    store.set(key, value)
+    _persist(store)
+
+
 def _save(store, key, value):
     store.set(key, json.dumps(value, ensure_ascii=False))
+    _persist(store)
 
 
 def flag(store, key):
@@ -71,7 +127,7 @@ def panel_text(store):
     rs = rules(store)
     default = store.get(DEFAULT_KEY) or ""
     return ("Посты и автоответы\n\n"
-            "Посты в каналы: %s, чатов: %d\n"
+            "Посты: %s. Канал: %s (только он)\n"
             "Автоответы в личке: %s, правил: %d\n"
             "Текст поста: %s\n"
             "Ответ по умолчанию: %s\n\n"
@@ -81,7 +137,8 @@ def panel_text(store):
             "3) Пост: /post текст <текст> и /post отправить.\n\n"
             "Автоответы: /ar on, /ar добавить привет|Здравствуй! Чем помочь?\n"
             "/ar по-умолчанию <текст>, /ar список, /ar off"
-            % ("вкл" if flag(store, POST_ON_KEY) else "выкл", len(chans),
+            % ("вкл" if flag(store, POST_ON_KEY) else "выкл",
+               (chans[0].get("title") if chans else "не подключён"),
                "вкл" if flag(store, REPLY_ON_KEY) else "выкл", len(rs),
                (store.get(TEXT_KEY) or "не задан")[:80],
                (default or "не задан")[:80],
@@ -121,7 +178,7 @@ def help_text():
 # ------------------------------------------------------------------ публикация
 def publish(bot, store, text=None):
     """Опубликовать текст во все сохранённые чаты. Возвращает (ok, fail)."""
-    body = (text or store.get(TEXT_KEY) or "").strip()
+    body = _sign((text or store.get(TEXT_KEY) or "").strip())
     if not body:
         return 0, 0
     if not flag(store, POST_ON_KEY):
@@ -171,8 +228,9 @@ def match_reply(store, text):
     for rule in rules(store):
         keys = rule.get("keys") or []
         if any((k or "").lower().replace("ё", "е") in low for k in keys if k):
-            return rule.get("text")
-    return (store.get(DEFAULT_KEY) or "").strip() or None
+            return _sign(rule.get("text"))
+    default = (store.get(DEFAULT_KEY) or "").strip()
+    return _sign(default) if default else None
 
 
 # ------------------------------------------------------------------ команды
@@ -249,16 +307,16 @@ def handle_command(bot, msg, text, chat_id, user, cmd, arg):
             bot.tg.send(chat_id, "Убрал «%s»." % esc(gone.get("title")))
             return True
         if sub in ("вкл", "on", "включить"):
-            bot.db.set(POST_ON_KEY, "on")
+            _set(bot.db, POST_ON_KEY, "on")
             bot.tg.send(chat_id, "Посты включены.", keyboard=panel_kb(bot.db))
             return True
         if sub in ("выкл", "off", "выключить"):
-            bot.db.set(POST_ON_KEY, "off")
+            _set(bot.db, POST_ON_KEY, "off")
             bot.tg.send(chat_id, "Посты выключены.", keyboard=panel_kb(bot.db))
             return True
         if sub in ("отправить", "send", "сейчас", "опубликовать"):
             if not flag(bot.db, POST_ON_KEY):
-                bot.db.set(POST_ON_KEY, "on")
+                _set(bot.db, POST_ON_KEY, "on")
             ok, fail = publish(bot, bot.db)
             if not ok and not fail:
                 bot.tg.send(chat_id, "Некуда или нечего публиковать: добавь чат и текст.")
@@ -269,34 +327,34 @@ def handle_command(bot, msg, text, chat_id, user, cmd, arg):
             if not rest:
                 bot.tg.send(chat_id, "Напиши: /post текст <что опубликовать>")
                 return True
-            bot.db.set(TEXT_KEY, rest[:3500])
+            _set(bot.db, TEXT_KEY, rest[:3500])
             bot.tg.send(chat_id, "Текст сохранён. Опубликовать: /post отправить",
                         keyboard=panel_kb(bot.db))
             return True
         # всё остальное — публикация текста сразу
         body = (arg or "").strip()
         if body:
-            bot.db.set(TEXT_KEY, body[:3500])
+            _set(bot.db, TEXT_KEY, body[:3500])
             if not flag(bot.db, POST_ON_KEY):
-                bot.db.set(POST_ON_KEY, "on")
+                _set(bot.db, POST_ON_KEY, "on")
             ok, fail = publish(bot, bot.db, body)
             bot.tg.send(chat_id, "Пост: доставлено %d, ошибок %d." % (ok, fail))
         return True
 
     # автоответы
     if sub in ("вкл", "on", "включить"):
-        bot.db.set(REPLY_ON_KEY, "on")
+        _set(bot.db, REPLY_ON_KEY, "on")
         bot.tg.send(chat_id, "Автоответы включены.", keyboard=panel_kb(bot.db))
         return True
     if sub in ("выкл", "off", "выключить"):
-        bot.db.set(REPLY_ON_KEY, "off")
+        _set(bot.db, REPLY_ON_KEY, "off")
         bot.tg.send(chat_id, "Автоответы выключены.", keyboard=panel_kb(bot.db))
         return True
     if sub in ("по-умолчанию", "default", "поумолчанию"):
         if not rest:
             bot.tg.send(chat_id, "Напиши: /ar по-умолчанию <текст ответа>")
             return True
-        bot.db.set(DEFAULT_KEY, rest[:1500])
+        _set(bot.db, DEFAULT_KEY, rest[:1500])
         bot.tg.send(chat_id, "Ответ по умолчанию сохранён.")
         return True
     if sub in ("добавить", "add", "+"):
@@ -345,7 +403,7 @@ def handle_command(bot, msg, text, chat_id, user, cmd, arg):
         return True
     if sub in ("очистить", "clear", "сброс"):
         _save(bot.db, RULES_KEY, [])
-        bot.db.set(DEFAULT_KEY, "")
+        _set(bot.db, DEFAULT_KEY, "")
         bot.tg.send(chat_id, "Правила и ответ по умолчанию очищены.")
         return True
 
@@ -363,9 +421,9 @@ def handle_callback(bot, data, chat_id, user, cbq):
         return True
     action = data[len(PREFIX):]
     if action == "post_on":
-        bot.db.set(POST_ON_KEY, "off" if flag(bot.db, POST_ON_KEY) else "on")
+        _set(bot.db, POST_ON_KEY, "off" if flag(bot.db, POST_ON_KEY) else "on")
     elif action == "reply_on":
-        bot.db.set(REPLY_ON_KEY, "off" if flag(bot.db, REPLY_ON_KEY) else "on")
+        _set(bot.db, REPLY_ON_KEY, "off" if flag(bot.db, REPLY_ON_KEY) else "on")
     elif action == "send":
         ok, fail = publish(bot, bot.db)
         bot.tg.send(chat_id, "Пост: доставлено %d, ошибок %d." % (ok, fail))
