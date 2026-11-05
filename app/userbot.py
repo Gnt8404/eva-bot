@@ -67,7 +67,9 @@ class Userbot:
         self.antispam = True
         self.pause_when_online = True
         self.owner_online = False
-        self._pending_replies = []
+        self._pending_replies = {}
+        self._seen_msgs = {}
+        self._offline_task = None
         self.settings = {}
         self.session = ""
         self.api_id = getattr(config, "TELEGRAM_API_ID", 0) or 0
@@ -201,12 +203,15 @@ class Userbot:
             status = getattr(event, "status", None)
             if isinstance(status, UserStatusOnline):
                 self.owner_online = True
+                if self._offline_task and not self._offline_task.done():
+                    self._offline_task.cancel()
                 log.info("userbot: владелец онлайн — автоответы на паузе")
             elif isinstance(status, UserStatusOffline):
                 self.owner_online = False
-                log.info("userbot: владелец офлайн — автоответы включены, "
-                         "отправляю накопленные")
-                asyncio.create_task(self._flush_pending())
+                if self._offline_task and not self._offline_task.done():
+                    self._offline_task.cancel()
+                self._offline_task = asyncio.create_task(self._offline_after_10s())
+                log.info("userbot: владелец вышел; жду 10 секунд")
         except Exception as exc:  # noqa: BLE001
             log.info("user status: %s", exc)
 
@@ -224,6 +229,15 @@ class Userbot:
             sender_id = getattr(sender, "id", None) or getattr(event, "chat_id", None)
             if me_id and sender_id == me_id:
                 return
+            msg_id = getattr(event, "id", None)
+            if msg_id:
+                mnow = time.time()
+                for old_id, ts in list(self._seen_msgs.items()):
+                    if mnow - ts > 600:
+                        self._seen_msgs.pop(old_id, None)
+                if msg_id in self._seen_msgs:
+                    return
+                self._seen_msgs[msg_id] = mnow
             text = (event.raw_text or "").strip()
             if not text or not self.autoreply:
                 return
@@ -263,23 +277,33 @@ class Userbot:
 
     def _queue_pending(self, sender_id, text):
         try:
-            if len(self._pending_replies) >= 50:
-                self._pending_replies.pop(0)
-            norm = (text or "").strip().lower()
-            for sid, old, _ts in self._pending_replies:
-                if sid == sender_id and (old or "").strip().lower() == norm:
-                    return
-            self._pending_replies.append((sender_id, text, time.time()))
+            if sender_id not in self._pending_replies and len(self._pending_replies) >= 50:
+                oldest = min(self._pending_replies,
+                             key=lambda k: self._pending_replies[k][1])
+                self._pending_replies.pop(oldest, None)
+            # Только последнее сообщение человека — без 2-3 ответов подряд.
+            self._pending_replies[sender_id] = (text, time.time())
         except Exception:
             pass
+
+    async def _offline_after_10s(self):
+        try:
+            await asyncio.sleep(10)
+            if self.owner_online:
+                return
+            await self._flush_pending()
+        except asyncio.CancelledError:
+            return
+        except Exception as exc:  # noqa: BLE001
+            log.info("offline flush: %s", exc)
 
     async def _flush_pending(self):
         """Владелец вышел из сети — сразу отвечаем всем, кто писал."""
         if not self.client or self.status != "connected":
             return
-        pending, self._pending_replies = self._pending_replies, []
+        pending, self._pending_replies = self._pending_replies, {}
         now = time.time()
-        for sender_id, text, ts in pending:
+        for sender_id, (text, ts) in pending.items():
             if now - ts > 900:
                 continue
             try:
