@@ -111,14 +111,6 @@ if SUPER_ADMIN not in HELP_ADMINS:
     HELP_ADMINS.insert(0, SUPER_ADMIN)
 HELP_DUP_HOURS = int(os.environ.get("HELP_DUP_HOURS", "24"))  # одна открытая заявка на игрока
 
-# ---------- рассылка по чатам ----------
-# доступ только этим id (владелец сервера и доверенный помощник)
-BROADCAST_ADMINS = [int(x) for x in os.environ.get(
-    "BROADCAST_ADMINS", "6343943842").replace(" ", "").split(",")
-    if x.strip().lstrip("-").isdigit()]
-BROADCAST_DELAY = float(os.environ.get("BROADCAST_DELAY", "1.0"))   # пауза между чатами, сек
-BROADCAST_PAGE = int(os.environ.get("BROADCAST_PAGE", "6"))         # чатов на странице
-
 # ---------- сеть ----------
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")

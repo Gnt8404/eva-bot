@@ -7,7 +7,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import (ai, broadcast, config, crafts, eva, guard, kb, mckb, mc, moder, music,
+from . import (ai, autopost, config, crafts, guard, kb, mckb, mc, moder, music,
                persist, rag, rcon, router, sinfo, tg, tools, traces, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
@@ -77,7 +77,7 @@ def admin_panel_kb(is_super=False):
     """Клавиатура админ-панели (доступна только админам — проверяется отдельно).
 
     Управление админами (раздел «Админы») видит только владелец; остальные
-    админы пользуются банами, консолью, античитом и статусом.
+    админы пользуются банами, консолью и статусом.
     """
     rows = []
     if is_super:
@@ -85,8 +85,8 @@ def admin_panel_kb(is_super=False):
     else:
         rows.append([("Статистика", "adm:stats")])
     rows += [
-        [("Баны и разбаны", "adm:bans"), ("Рассылка", "adm:broadcast")],
-        [("Консоль", "adm:console"), ("Античит", "adm:eva")],
+        [("Баны и разбаны", "adm:bans"), ("Посты и автоответы", "adm:autopost")],
+        [("Консоль", "adm:console")],
         [("Статус сервера", "adm:status")],
         [("Обновить", "adm:home"), ("Закрыть", "adm:close")],
     ]
@@ -140,12 +140,12 @@ ADMIN_ONLY = {
     "/добавитьадмина", "/deladmin", "/remadmin", "/del_admin", "/удалитьадмина",
     "/cooldown", "/emotions", "/эмоции",
     "/emoji", "/эмодзи", "/insultdm", "/violations", "/fact", "/facts", "/delfact",
-    "/tickets", "/zayavki", "/answer", "/say",
+    "/tickets", "/zayavki", "/answer",
     "/restart", "/перезапуск",
     "/console", "/cmd", "/консоль", "/rcon", "/wl", "/whitelist", "/вайтлист",
     "/ban", "/бан", "/забанить", "/unban", "/pardon", "/разбан", "/разбанить",
     "/banlist", "/баны", "/банлист",
-    "/eva", "/ева",
+    "/post", "/пост", "/autopost", "/ap", "/autoreply", "/ar",
     "/kb", "/знания",
     "/moder", "/модерация", "/фильтр", "/check", "/проверка",
     "/addbad", "/delbad", "/badlist", "/badwords",
@@ -228,12 +228,10 @@ HELP_TEXT = """Что я умею:
 в какой-нибудь другой валюте.
 
 Для администрации: /console <команда> — консоль сервера прямо из чата,
-/eva — управление античитом Eva (check/report/toggle/setban/reload/bot test),
 /rcon — настройка связи с сервером, /wl add <ник> — добавить в вайтлист,
 /moder on|off — фильтр оскорблений, /addbad <слово> — своё слово в фильтр,
 /setinfo — карточка сервера, /setip <адрес:порт> — адреса для проверки статуса,
-/kb reload — перечитать знания из папки knowledge,
-/рассылка — рассылка сообщений по чатам с панелью настройки (только владелец).
+/kb reload — перечитать знания из папки knowledge.
 
 В группе вызывай меня словом «%s» или упоминанием @%s.""" % (config.BOT_NAME, config.BOT_USERNAME)
 
@@ -311,10 +309,9 @@ class Bot:
             ("reset", "очистить историю диалога"),
         ]
         self.tg.set_my_commands(base)
-        # владельцу и доверенному помощнику показываем ещё рассылку и заявки
-        extra = [("rassylka", "рассылка по чатам"),
-                 ("helpq", "открытые заявки на помощь")]
-        for admin_id in config.BROADCAST_ADMINS + config.HELP_ADMINS:
+        # владельцу и доверенному помощнику показываем ещё заявки
+        extra = [("helpq", "открытые заявки на помощь")]
+        for admin_id in config.HELP_ADMINS:
             self.tg.set_my_commands(base + extra, chat_id=admin_id)
 
     # ------------------------------------------------------------------
@@ -739,10 +736,6 @@ class Bot:
         uid = user.get("id")
         state = self.state.get(uid)
 
-        # панель рассылки ждёт текст / фото / кнопку от владельца
-        if broadcast.capture(self, msg, text, user):
-            return
-
         if state and text.lower() in ("отмена", "/cancel", "назад", "стоп"):
             self.state.pop(uid, None)
             self.tg.send(chat_id, "Отменено.", keyboard=MAIN_MENU)
@@ -909,11 +902,6 @@ class Bot:
                          keyboard=MAIN_MENU)
             return True
 
-        # рассылка по чатам (только владелец и доверенный id)
-        if broadcast.is_command(cmd):
-            broadcast.handle_command(self, msg, text, chat_id, user, cmd)
-            return True
-
         if cmd in HELP_CMDS and self._is_helper(uid, user.get("username")):
             return self.help_command(msg, text, chat_id, user, cmd, arg)
 
@@ -941,6 +929,9 @@ class Bot:
             self.tg.send(chat_id, entry.render(), keyboard=BACK_MENU)
             return True
 
+        if autopost.is_command(cmd):
+            autopost.handle_command(self, msg, text, chat_id, user, cmd, arg)
+            return True
         if cmd in ("/admin", "/админ"):
             if group:
                 self.tg.send(chat_id, "Админ-панель открывается в личке с ботом — напиши там /admin.")
@@ -1297,8 +1288,6 @@ class Bot:
                       "Команда вайтлиста: %s" % conf["template"]]
             self.tg.send(chat_id, "\n".join(lines))
             return True
-        if cmd in ("/eva", "/ева"):
-            return eva.handle(self, chat_id, arg)
         if cmd in ("/wl", "/whitelist", "/вайтлист"):
             chunks = arg.split()
             sub = chunks[0].lower() if chunks else ""
@@ -1404,19 +1393,6 @@ class Bot:
             tid = int(chunks[0])
             reason = " ".join(chunks[1:]).strip()
             self.tg.send(chat_id, self.reject_ticket(tid, reason, user))
-            return True
-        if cmd == "/say":
-            if not arg:
-                return True
-            sent, failed = 0, 0
-            for target in self.db.all_user_ids():
-                try:
-                    self.tg.send(target, arg)
-                    sent += 1
-                except Exception:
-                    failed += 1
-                time.sleep(0.05)
-            self.tg.send(chat_id, "Рассылка: доставлено %d, не доставлено %d." % (sent, failed))
             return True
         return False
 
@@ -1997,6 +1973,14 @@ class Bot:
             return ("Чтобы перезапустить сервер, напиши /restart confirm. "
                     "Это прервёт игру на 30-60 секунд.", False)
 
+        if (not group and uid0 and not self.db.is_admin(uid0, (user or {}).get("username"))
+                and not question.startswith("/")):
+            auto = autopost.match_reply(self.db, question)
+            if auto:
+                traces.trace({"kind": "autoreply", "uid": uid0, "role": role,
+                              "text": guard.safe_for_log(question)})
+                return auto, False
+
         direct = self._direct_answer(question)
         if direct:
             return direct, False
@@ -2460,7 +2444,6 @@ class Bot:
                 "Адреса сервера: %s\n\n"
                 "Быстрые команды:\n"
                 "/console <команда> — консоль сервера\n"
-                "/eva online — античит\n"
                 "/addadmin — добавить админа (только владелец)\n"
                 "/deladmin — убрать админа (только владелец)"
                 % (st["users"], st["tickets"], st["open"], st["knowledge"],
@@ -2526,23 +2509,8 @@ class Bot:
                      "Можно вручную: /console <команда> (например /console list).\n"
                      "Ответ приходит из консоли сервера (RCON/панель).",
                      keyboard=keyboard([
-                         [("list", "adm:run:list"), ("eva online", "adm:run:eva online")],
-                         [("say Привет", "adm:run:say Привет")],
+                         [("list", "adm:run:list"), ("tps", "adm:run:tps")],
                          [("time set day", "adm:run:time set day")],
-                         [("Админ-панель", "adm:home")]]))
-
-    def admin_eva(self, chat_id):
-        self.tg.send(chat_id,
-                     "Античит Eva\n\n"
-                     "/eva online — кто онлайн\n"
-                     "/eva check <ник> — флаги, риск, клиент\n"
-                     "/eva report <ник> — отправить данные боту\n"
-                     "/eva toggle xray|esp|xray-heuristic|client-mods|autoclicker\n"
-                     "/eva setban <ник> <причина>, /eva reload, /eva bot test",
-                     keyboard=keyboard([
-                         [("eva online", "adm:run:eva online"),
-                          ("eva bot test", "adm:run:eva bot test")],
-                         [("eva reload", "adm:run:eva reload")],
                          [("Админ-панель", "adm:home")]]))
 
     def admin_bans(self, chat_id):
@@ -2623,6 +2591,11 @@ class Bot:
         if not self.db.is_admin(uid, user.get("username")):
             self.tg.answer_callback(cbq.get("id"), "Только для администрации сервера.", True)
             return
+        chat_type = (((cbq.get("message") or {}).get("chat") or {}).get("type")
+                     or "private")
+        if chat_type != "private":
+            self.tg.answer_callback(cbq.get("id"), "Админ-панель — только в личке с ботом.", True)
+            return
         action = data[4:]
         if action in ("home", "refresh"):
             self.admin_panel(chat_id, uid)
@@ -2636,11 +2609,8 @@ class Bot:
             self.admin_stats(chat_id)
         elif action == "bans":
             self.admin_bans(chat_id)
-        elif action == "broadcast":
-            if not broadcast.allowed(uid, self, user.get("username")):
-                self.tg.answer_callback(cbq.get("id"), "Рассылка недоступна.", True)
-                return
-            broadcast.room_panel(self, uid, chat_id)
+        elif action == "autopost":
+            autopost.panel(self, chat_id, uid)
         elif action == "banhelp":
             self.tg.send(chat_id,
                          "Забанить игрока\n\n"
@@ -2657,8 +2627,6 @@ class Bot:
             self.admin_server(chat_id, "pardon " + name, refresh_bans=True, uid=uid)
         elif action == "console":
             self.admin_console(chat_id)
-        elif action == "eva":
-            self.admin_eva(chat_id)
         elif action == "status":
             self.tg.answer_callback(cbq.get("id"), "Проверяю сервер…")
             self.tg.send(chat_id, self.server_text(force=True),
@@ -2729,8 +2697,8 @@ class Bot:
         if not data:
             return
 
-        # кнопки рассылки
-        if broadcast.handle_callback(self, data, chat_id, user, cbq):
+        if data.startswith("ap:"):
+            autopost.handle_callback(self, data, chat_id, user, cbq)
             return
 
         if data.startswith("adm:"):
