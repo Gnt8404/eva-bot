@@ -403,16 +403,37 @@ class Userbot:
         self.loop.call_soon_threadsafe(self._pw_q.put_nowait, password)
         return True, "Пароль принят."
 
+    def disconnect(self):
+        """Отключить клиент, оставив сессию для повторного включения."""
+        self.enabled = False
+        try:
+            if self.client is not None:
+                self._run(self.client.disconnect(), timeout=15)
+        except Exception as exc:  # noqa: BLE001
+            log.info("userbot disconnect: %s", exc)
+        self.client = None
+        self.status = "off"
+        self.me = None
+        self._save_settings()
+        return True
+
     def logout(self):
+        """Выйти из аккаунта: Telegram-сессия удаляется безвозвратно."""
         try:
             if self.client is not None:
                 self._run(self.client.log_out(), timeout=20)
         except Exception as exc:  # noqa: BLE001
             log.info("userbot logout: %s", exc)
+        try:
+            if self.client is not None:
+                self._run(self.client.disconnect(), timeout=10)
+        except Exception:
+            pass
         self.client = None
         self.session = ""
         self.status = "off"
         self.me = None
+        self.enabled = False
         self._save_settings()
         persist.write_text(self.store, self.session_file, "")
         return True
@@ -525,10 +546,13 @@ def handle_command(bot, msg, text, chat_id, user, arg):
             threading.Thread(target=ub._boot, daemon=True).start()
         bot.tg.send(chat_id, "Userbot включён.")
         return True
+    if sub in ("disconnect", "отключить"):
+        ub.disconnect()
+        bot.tg.send(chat_id, "Аккаунт отключён (сессия сохранена).")
+        return True
     if sub in ("off", "выкл", "выключить"):
-        ub.enabled = False
-        ub._save_settings()
-        bot.tg.send(chat_id, "Userbot выключен (сессия сохранена).")
+        ub.disconnect()
+        bot.tg.send(chat_id, "Userbot выключен.")
         return True
     if sub in ("autoreply", "автоответы"):
         if rest.lower() in ("on", "вкл", "включить"):

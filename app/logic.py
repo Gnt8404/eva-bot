@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "8.0"
+CODE_VERSION = "8.1"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -861,6 +861,8 @@ class Bot:
         if cmd in ("/docs", "/documents", "/документы", "/документ"):
             self.send_documents(chat_id)
             return True
+        if cmd in ("/disconnect", "/отключить"):
+            return self.connect_command(msg, text, chat_id, user, cmd, "logout")
         if cmd in ("/connect", "/подключить", "/myeva"):
             return self.connect_command(msg, text, chat_id, user, cmd, arg)
         if cmd in ("/password", "/пароль"):
@@ -2836,9 +2838,8 @@ class Bot:
             self.tg.send(chat_id, ub.status_text())
             return True
         if sub in ("off", "выкл", "выключить"):
-            ub.enabled = False
-            ub._save_settings()
-            self.tg.send(chat_id, "Аккаунт отключён (сессия сохранена).")
+            ub.disconnect()
+            self.tg.send(chat_id, "Аккаунт отключён. Подключить заново: /connect")
             return True
         if sub in ("on", "вкл", "включить"):
             ub.enabled = True
@@ -2864,9 +2865,13 @@ class Bot:
             ub.store.set("autoreply_default", rest[:1500])
             self.tg.send(chat_id, "Текст автоответа сохранён (с подписью).")
             return True
-        if sub in ("logout", "выход", "отключить"):
+        if sub in ("logout", "выход", "отключить", "disconnect"):
             ub.logout()
-            self.tg.send(chat_id, "Аккаунт отключён, сессия удалена.")
+            if uid != config.SUPER_ADMIN:
+                self.userbots.pop(uid, None)
+                self._save_userbots()
+            self.tg.send(chat_id, "Сессия удалена, аккаунт отключён. "
+                                  "Подключить заново: /connect")
             return True
         self.tg.send(chat_id, "Команды: /connect (QR-вход), /connect status, "
                               "/connect autoreply on|off, /connect text <текст>, "
