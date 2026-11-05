@@ -2762,13 +2762,13 @@ class Bot:
         if who.isdigit():
             return who
         if who.startswith("@") and len(who) > 1:
+            alias = self._admin_alias(who)
+            if alias:
+                return alias
             rows = self.db.q("SELECT user_id FROM users WHERE lower(username)=?",
                              (who[1:].lower(),))
             if rows:
                 return str(rows[0]["user_id"])
-            alias = self._admin_alias(who)
-            if alias:
-                return alias
             # Telegram не умеет искать юзеров по @нику, пока они не писали боту.
             # Возвращаем @ник — добавим в «ожидание».
             return who
