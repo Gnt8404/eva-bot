@@ -56,6 +56,7 @@ class Userbot:
         self._code_q = None
         self._pw_q = None
         self._lock = threading.RLock()
+        self._last_reply = {}
         self.settings = {}
         self.session = ""
         self.api_id = getattr(config, "TELEGRAM_API_ID", 0) or 0
@@ -164,6 +165,7 @@ class Userbot:
         client.add_event_handler(self._on_new_message, events.NewMessage(incoming=True))
 
     async def _on_new_message(self, event):
+        """Автоответчик в личке на ЛИЧНОМ аккаунте (не бот)."""
         if not self.autoreply or self.status != "connected":
             return
         try:
@@ -173,14 +175,29 @@ class Userbot:
             if sender is None or getattr(sender, "bot", False):
                 return
             me_id = getattr(self.me, "id", None)
-            if me_id and getattr(sender, "id", None) == me_id:
+            sender_id = getattr(sender, "id", None)
+            if me_id and sender_id == me_id:
                 return
-            text = event.raw_text or ""
+            text = (event.raw_text or "").strip()
+            if not text or text.startswith("/"):
+                return
+            now = time.time()
+            last = self._last_reply.get(sender_id, 0)
+            if now - last < 300:          # не чаще одного ответа в 5 минут одному человеку
+                return
             reply = autopost.match_reply(self.store, text)
             if not reply:
                 return
             await event.reply(reply)
-            log.info("userbot автоответ для %s", getattr(sender, "id", "?"))
+            self._last_reply[sender_id] = now
+            log.info("userbot автоответ для %s (%s)", sender_id,
+                     getattr(sender, "username", ""))
+            try:
+                from . import traces
+                traces.trace({"kind": "userbot_autoreply", "uid": sender_id,
+                              "text": (text or "")[:200]})
+            except Exception:
+                pass
         except Exception as exc:  # noqa: BLE001
             log.info("userbot автоответ не отправлен: %s", exc)
 
@@ -360,7 +377,14 @@ class Userbot:
                 getattr(self.me, "first_name", ""),
                 getattr(self.me, "username", self.me.id)))
         lines.append("api_id: %s" % ("есть" if self.api_id else "нет"))
-        lines.append("Автоответы: %s" % ("вкл" if self.autoreply else "выкл"))
+        lines.append("Автоответы в личке: %s" % ("вкл" if self.autoreply else "выкл"))
+        try:
+            text = (self.store.get("autoreply_default")
+                    or getattr(config, "AUTOREPLY_DEFAULT_TEXT", ""))
+            if text:
+                lines.append("Текст: %s" % text[:100])
+        except Exception:
+            pass
         if self.error:
             lines.append("Ошибка: %s" % self.error)
         lines.append("")
