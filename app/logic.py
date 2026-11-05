@@ -277,6 +277,9 @@ class Bot:
         self._rcon_state = None         # последний результат проверки консоли
         self._rcon_tick = 0
         self.userbot = userbot.Userbot(self)
+        self.admin_aliases = {}
+        threading.Thread(target=self._load_admin_aliases, daemon=True,
+                         name="admin-aliases").start()
         moder.reload(self.db.bad_words())
         self.me = self.tg.get_me()
         self.register_commands()
@@ -2763,12 +2766,36 @@ class Bot:
                              (who[1:].lower(),))
             if rows:
                 return str(rows[0]["user_id"])
+            alias = self._admin_alias(who)
+            if alias:
+                return alias
             # Telegram не умеет искать юзеров по @нику, пока они не писали боту.
             # Возвращаем @ник — добавим в «ожидание».
             return who
         if who.lower().startswith("id") and who[2:].isdigit():
             return who[2:]
         return None
+
+    def _load_admin_aliases(self):
+        try:
+            raw = persist.read_text(self.db, "/bot-data/admin_names.json")
+            if raw:
+                data = json.loads(raw)
+                if isinstance(data, dict):
+                    self.admin_aliases = {str(k).lstrip("@").lower(): str(v)
+                                          for k, v in data.items()}
+        except Exception as exc:  # noqa: BLE001
+            log.info("алиасы админов не загрузились: %s", exc)
+
+    def _save_admin_aliases(self):
+        try:
+            persist.write_text(self.db, "/bot-data/admin_names.json",
+                               json.dumps(self.admin_aliases, ensure_ascii=False))
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _admin_alias(self, username):
+        return self.admin_aliases.get((username or "").lstrip("@").lower())
 
     # --------------------------------------------------- отложенные админы
     def _pending_admins(self):
@@ -2796,6 +2823,8 @@ class Bot:
             return
         self.db.add_admin(str(uid))
         self.db.del_admin("@%s" % uname)
+        self.admin_aliases[uname.lower()] = str(uid)
+        self._save_admin_aliases()
         self._save_pending([p for p in pending if p not in match])
         saved = persist.save_admins(self.db)
         log.info("выдан админ %s (%s), сохранение: %s", uname, uid, saved)
