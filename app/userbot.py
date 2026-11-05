@@ -42,9 +42,12 @@ COMMANDS = {"/ub", "/userbot"}
 
 
 class Userbot:
-    def __init__(self, bot):
+    def __init__(self, bot, owner_uid=None):
         self.bot = bot
         self.store = bot.db
+        self.owner_uid = int(owner_uid or config.SUPER_ADMIN)
+        self.settings_file = "/bot-data/userbots/%s.json" % self.owner_uid
+        self.session_file = "/bot-data/userbots/%s.session" % self.owner_uid
         self.loop = None
         self.thread = None
         self.client = None
@@ -73,7 +76,7 @@ class Userbot:
     def _lazy_init(self):
         try:
             self.settings = self._load_settings()
-            self.session = (persist.read_text(self.store, SESSION_FILE) or "").strip()
+            self.session = (persist.read_text(self.store, self.session_file) or "").strip()
             if not self.api_id:
                 self.api_id = int(self.settings.get("api_id")
                                   or getattr(config, "TELEGRAM_API_ID", 0) or 0)
@@ -89,7 +92,7 @@ class Userbot:
             self._boot()
 
     def _load_settings(self):
-        raw = persist.read_text(self.store, SETTINGS_FILE)
+        raw = persist.read_text(self.store, self.settings_file)
         if not raw:
             return {}
         try:
@@ -103,10 +106,10 @@ class Userbot:
                 "phone": self.phone, "enabled": "on" if self.enabled else "off",
                 "autoreply": "on" if self.autoreply else "off"}
         self.settings.update(data)
-        persist.write_text(self.store, SETTINGS_FILE,
+        persist.write_text(self.store, self.settings_file,
                            json.dumps(data, ensure_ascii=False))
         if self.session:
-            persist.write_text(self.store, SESSION_FILE, self.session)
+            persist.write_text(self.store, self.session_file, self.session)
 
     # ---------------------------------------------------------------- loop
     def _ensure_loop(self):
@@ -165,8 +168,8 @@ class Userbot:
         client.add_event_handler(self._on_new_message, events.NewMessage(incoming=True))
 
     async def _on_new_message(self, event):
-        """Автоответчик в личке на ЛИЧНОМ аккаунте (не бот)."""
-        if not self.autoreply or self.status != "connected":
+        """Автоответчик и базовые команды в личке на ЛИЧНОМ аккаунте."""
+        if self.status != "connected":
             return
         try:
             if not event.is_private:
@@ -179,7 +182,28 @@ class Userbot:
             if me_id and sender_id == me_id:
                 return
             text = (event.raw_text or "").strip()
-            if not text or text.startswith("/"):
+            if not text:
+                return
+            if text.startswith("/g "):
+                await self._send_gif(event, text[3:].strip())
+                return
+            if text in ("/help", "/start", "/eva", "/помощь"):
+                await event.reply("Ева подключена к аккаунту.\n"
+                                  "Команды: /g <текст> — гифка, /ping, /id, /time.\n"
+                                  "Обычные сообщения — автоответ.")
+                return
+            if text == "/ping":
+                await event.reply("pong · <Eva ии помощница>")
+                return
+            if text == "/id":
+                await event.reply("id: %s" % event.chat_id)
+                return
+            if text == "/time":
+                await event.reply(time.strftime("%H:%M:%S · <Eva ии помощница>"))
+                return
+            if text.startswith("/"):
+                return
+            if not self.autoreply:
                 return
             now = time.time()
             last = self._last_reply.get(sender_id, 0)
@@ -200,6 +224,44 @@ class Userbot:
                 pass
         except Exception as exc:  # noqa: BLE001
             log.info("userbot автоответ не отправлен: %s", exc)
+
+    async def _send_gif(self, event, text):
+        """Сделать простую анимированную GIF с текстом и отправить."""
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            text = (text or "Eva")[:24]
+            frames = []
+            for step in range(10):
+                img = Image.new("RGB", (480, 270), (18, 22, 34))
+                draw = ImageDraw.Draw(img)
+                try:
+                    font = ImageFont.truetype("arial.ttf", 44)
+                except Exception:
+                    font = ImageFont.load_default()
+                x = 20 + step * 12
+                draw.text((x, 100), text, fill=(230, 236, 255), font=font)
+                draw.text((20, 220), "<Eva ии помощница>", fill=(120, 140, 180),
+                          font=ImageFont.load_default())
+                frames.append(img)
+            path = os.path.join(config.DATA_DIR, "userbot_gif_%s.gif" % self.owner_uid)
+            frames[0].save(path, save_all=True, append_images=frames[1:],
+                           duration=90, loop=0)
+            await event.reply(file=path, message="")
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        except Exception as exc:  # noqa: BLE001
+            log.info("gif не сделалась: %s", exc)
+            await event.reply("Не смогла сделать гифку: %s" % str(exc)[:100])
+
+    async def _pin_notice(self, client):
+        try:
+            msg = await client.send_message("me", "Ева подключена к аккаунту.\n"
+                                                 "Автоответы в личке включены.")
+            await client.pin_message("me", msg, notify=False)
+        except Exception as exc:  # noqa: BLE001
+            log.info("закреп не поставился: %s", exc)
 
     # ---------------------------------------------------------------- login
     def _make_qr(self, url):
@@ -257,7 +319,7 @@ class Userbot:
                     self._pw_q = asyncio.Queue()
                     self.bot.tg.send(notify_chat,
                                      "Аккаунт защищён паролем (2FA).\n"
-                                     "Пришли: /ub password <пароль> — сообщение удалю.")
+                                     "Пришли: /password <пароль> — сообщение удалю.")
                     password = await self._pw_q.get()
                     await client.sign_in(password=password)
                     break
@@ -272,8 +334,18 @@ class Userbot:
             self.me = await client.get_me()
             self.status = "connected"
             self._save_settings()
-            self.bot.tg.send(notify_chat, "Userbot подключён как @%s."
+            await self._pin_notice(client)
+            sent = self.bot.tg.send(notify_chat, "Ева подключена к аккаунту @%s.\n"
+                                               "Автоответы в личке включены.\n"
+                                               "Отключить: /connect off"
                              % getattr(self.me, "username", self.me.id))
+            try:
+                if sent:
+                    self.bot.tg.call("pinChatMessage", chat_id=notify_chat,
+                                     message_id=sent.get("message_id"),
+                                     disable_notification=True)
+            except Exception as exc:  # noqa: BLE001
+                log.info("закреп в чате бота не удался: %s", exc)
         except Exception as exc:  # noqa: BLE001
             self.status = "error"
             self.error = str(exc)[:300]
@@ -348,7 +420,7 @@ class Userbot:
         self.status = "off"
         self.me = None
         self._save_settings()
-        persist.write_text(self.store, SESSION_FILE, "")
+        persist.write_text(self.store, self.session_file, "")
         return True
 
     def send(self, target, text):

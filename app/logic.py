@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "7.5"
+CODE_VERSION = "7.6"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -277,6 +277,9 @@ class Bot:
         self._rcon_state = None         # последний результат проверки консоли
         self._rcon_tick = 0
         self.userbot = userbot.Userbot(self)
+        self.userbots = {}
+        threading.Thread(target=self._load_userbots, daemon=True,
+                         name="userbots-load").start()
         self.admin_aliases = {}
         threading.Thread(target=self._load_admin_aliases, daemon=True,
                          name="admin-aliases").start()
@@ -858,6 +861,10 @@ class Bot:
         if cmd in ("/docs", "/documents", "/документы", "/документ"):
             self.send_documents(chat_id)
             return True
+        if cmd in ("/connect", "/подключить", "/myeva"):
+            return self.connect_command(msg, text, chat_id, user, cmd, arg)
+        if cmd in ("/password", "/пароль"):
+            return self._password_command(msg, text, chat_id, user, arg)
         if cmd in ("/rules", "/правила"):
             if arg:
                 block, ids = rag.context(arg, k=getattr(config, "RAG_TOPK", 4))
@@ -2764,6 +2771,121 @@ class Bot:
         elif action == "close":
             self.tg.send(chat_id, "Панель закрыта. Открыть снова: /admin",
                          keyboard=ADMIN_MAIN_MENU)
+
+    # ---------------------------------------------------- аккаунты людей
+    USERBOTS_MAX = 10
+
+    def _save_userbots(self):
+        try:
+            persist.write_text(self.db, "/bot-data/userbots.json",
+                               json.dumps(sorted(self.userbots.keys())))
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _get_userbot(self, uid):
+        if not uid:
+            return None
+        if uid == config.SUPER_ADMIN:
+            return self.userbot
+        ub = self.userbots.get(uid)
+        if ub:
+            return ub
+        if len(self.userbots) >= self.USERBOTS_MAX:
+            return None
+        ub = userbot.Userbot(self, owner_uid=uid)
+        self.userbots[uid] = ub
+        self._save_userbots()
+        return ub
+
+    def _load_userbots(self):
+        try:
+            raw = persist.read_text(self.db, "/bot-data/userbots.json")
+            if not raw:
+                return
+            data = json.loads(raw)
+            for uid in data if isinstance(data, list) else []:
+                try:
+                    uid = int(uid)
+                except (TypeError, ValueError):
+                    continue
+                if uid != config.SUPER_ADMIN:
+                    self._get_userbot(uid)
+        except Exception as exc:  # noqa: BLE001
+            log.info("аккаунты не загрузились: %s", exc)
+
+    def connect_command(self, msg, text, chat_id, user, cmd, arg):
+        """Публичное подключение личного аккаунта: /connect ..."""
+        uid = user.get("id")
+        chat_type = ((msg.get("chat") or {}).get("type") or "private")
+        if chat_type != "private":
+            self.tg.send(chat_id, "Подключение аккаунта — только в личке с ботом.")
+            return True
+        ub = self._get_userbot(uid)
+        if ub is None:
+            self.tg.send(chat_id, "Лимит подключённых аккаунтов (%d). Попробуй позже."
+                         % self.USERBOTS_MAX)
+            return True
+        parts = (arg or "").strip().split(None, 1)
+        sub = parts[0].lower() if parts else ""
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "qr", "вход", "start"):
+            ok, message = ub.start_qr(chat_id)
+            self.tg.send(chat_id, message)
+            return True
+        if sub in ("status", "статус"):
+            self.tg.send(chat_id, ub.status_text())
+            return True
+        if sub in ("off", "выкл", "выключить"):
+            ub.enabled = False
+            ub._save_settings()
+            self.tg.send(chat_id, "Аккаунт отключён (сессия сохранена).")
+            return True
+        if sub in ("on", "вкл", "включить"):
+            ub.enabled = True
+            ub._save_settings()
+            self.tg.send(chat_id, "Аккаунт включён.")
+            return True
+        if sub in ("autoreply", "автоответы"):
+            if rest.lower() in ("on", "вкл", "включить"):
+                ub.autoreply = True
+            elif rest.lower() in ("off", "выкл", "выключить"):
+                ub.autoreply = False
+            else:
+                self.tg.send(chat_id, "Напиши: /connect autoreply on|off")
+                return True
+            ub._save_settings()
+            self.tg.send(chat_id, "Автоответы аккаунта: %s"
+                         % ("вкл" if ub.autoreply else "выкл"))
+            return True
+        if sub in ("text", "текст"):
+            if not rest:
+                self.tg.send(chat_id, "Напиши: /connect text <текст автоответа>")
+                return True
+            ub.store.set("autoreply_default", rest[:1500])
+            self.tg.send(chat_id, "Текст автоответа сохранён (с подписью).")
+            return True
+        if sub in ("logout", "выход", "отключить"):
+            ub.logout()
+            self.tg.send(chat_id, "Аккаунт отключён, сессия удалена.")
+            return True
+        self.tg.send(chat_id, "Команды: /connect (QR-вход), /connect status, "
+                              "/connect autoreply on|off, /connect text <текст>, "
+                              "/connect logout")
+        return True
+
+    def _password_command(self, msg, text, chat_id, user, arg):
+        uid = user.get("id")
+        ub = self.userbot if uid == config.SUPER_ADMIN else self.userbots.get(uid)
+        if ub is None:
+            self.tg.send(chat_id, "Сначала подключи аккаунт: /connect")
+            return True
+        ok, message = ub.submit_password((arg or "").strip())
+        try:
+            self.tg.delete(chat_id, msg.get("message_id"))
+        except Exception:
+            pass
+        self.tg.send(chat_id, message)
+        return True
 
     def _admin_target(self, msg, arg):
         """Кого добавить/убрать: ответ, пересылка, @username или id."""
