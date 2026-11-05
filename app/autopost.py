@@ -44,11 +44,14 @@ def _json_list(store, key):
 
 
 def channels(store):
-    items = [c for c in _json_list(store, CHANNELS_KEY)
-             if isinstance(c, dict) and c.get("id")]
+    # Если канал закреплён в конфиге, он работает всегда — даже если файл
+    # настроек на сервере не успел загрузиться.
     if LOCK_ID:
-        items = [c for c in items if int(c.get("id") or 0) == LOCK_ID]
-    return items
+        return [{"id": LOCK_ID,
+                 "title": getattr(config, "AUTOPOST_CHANNEL_TITLE",
+                                  "Aetherlyn")}]
+    return [c for c in _json_list(store, CHANNELS_KEY)
+            if isinstance(c, dict) and c.get("id")]
 
 
 def _sign(text):
@@ -71,8 +74,11 @@ def add_chat(store, chat, single=False):
     cid = (chat or {}).get("id")
     if not cid:
         return None
-    if LOCK_ID and int(cid) != LOCK_ID:
-        return None
+    if LOCK_ID:
+        if int(cid) != LOCK_ID:
+            return None
+        return {"id": LOCK_ID,
+                "title": getattr(config, "AUTOPOST_CHANNEL_TITLE", "Aetherlyn")}
     item = {"id": cid,
             "title": (chat or {}).get("title") or (chat or {}).get("username") or str(cid)}
     items = [] if single else [c for c in channels(store) if c.get("id") != cid]
@@ -110,8 +116,9 @@ def _save(store, key, value):
     _persist(store)
 
 
-def flag(store, key):
-    return (store.get(key) or "off").lower() == "on"
+def flag(store, key, default="on"):
+    value = store.get(key)
+    return (value if value is not None else default).lower() == "on"
 
 
 def allowed(bot, uid, username=None):
@@ -229,7 +236,8 @@ def match_reply(store, text):
         keys = rule.get("keys") or []
         if any((k or "").lower().replace("ё", "е") in low for k in keys if k):
             return _sign(rule.get("text"))
-    default = (store.get(DEFAULT_KEY) or "").strip()
+    default = (store.get(DEFAULT_KEY) or
+               getattr(config, "AUTOREPLY_DEFAULT_TEXT", "")).strip()
     return _sign(default) if default else None
 
 

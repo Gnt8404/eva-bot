@@ -77,6 +77,17 @@ AUTOPOST_KEYS = ["autopost_channels", "autopost_text", "autopost_on",
 
 def load_autopost(store):
     """Восстановить настройки постов/автоответов с диска сервера."""
+    for _attempt in range(2):
+        try:
+            if _load_autopost_once(store):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(0.8)
+    return False
+
+
+def _load_autopost_once(store):
     conf = _conf(store)
     if not conf:
         return False

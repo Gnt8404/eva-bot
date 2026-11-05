@@ -161,6 +161,12 @@ except ValueError:
     AUTOPOST_CHANNEL_ID = -1004322573414
 AUTOPOST_SIGNATURE = os.environ.get("AUTOPOST_SIGNATURE",
                                     "<Eva ии помощница>").strip()
+AUTOPOST_CHANNEL_TITLE = os.environ.get("AUTOPOST_CHANNEL_TITLE",
+                                        "⚚ Aetherlyn - 2 сезон ⚚").strip()
+AUTOREPLY_DEFAULT_TEXT = os.environ.get(
+    "AUTOREPLY_DEFAULT_TEXT",
+    "Здравствуйте! Я Ева, ИИ-помощница проекта Aetherlyn. "
+    "Напишите вопрос — подскажу по серверу, правилам и плагинам.").strip()
 
 # ---------- RAG / защита / трейсы ----------
 
