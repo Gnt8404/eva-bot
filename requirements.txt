@@ -1,3 +1,4 @@
 yt-dlp
 imageio-ffmpeg
 telethon
+qrcode[pil]

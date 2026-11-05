@@ -128,8 +128,8 @@ class Userbot:
     # ---------------------------------------------------------------- client
     async def _make_client(self):
         client = TelegramClient(StringSession(self.session), self.api_id,
-                                self.api_hash, device_model="Eva bot",
-                                system_version="Windows 10", app_version="6.9")
+                                self.api_hash, device_model="Desktop",
+                                system_version="Windows 10", app_version="4.16.8")
         await client.connect()
         return client
 
@@ -184,6 +184,84 @@ class Userbot:
             log.info("userbot автоответ не отправлен: %s", exc)
 
     # ---------------------------------------------------------------- login
+    def _make_qr(self, url):
+        import qrcode
+        path = os.path.join(config.DATA_DIR, "userbot_qr.png")
+        img = qrcode.make(url)
+        img.save(path)
+        return path
+
+    def start_qr(self, chat_id):
+        if not HAS_TELETHON:
+            return False, "Telethon не установлен."
+        if not self.api_id or not self.api_hash:
+            return False, "Сначала /ub api <id> <hash>."
+        self._ensure_loop()
+        self._qr_future = asyncio.run_coroutine_threadsafe(self._qr_flow(chat_id, chat_id),
+                                                           self.loop)
+        return True, "Готовлю QR-код для входа..."
+
+    async def _qr_flow(self, notify_chat, chat_id):
+        try:
+            client = TelegramClient(StringSession(self.session), self.api_id,
+                                    self.api_hash, device_model="Desktop",
+                                    system_version="Windows 10",
+                                    app_version="4.16.8")
+            await client.connect()
+            if await client.is_user_authorized():
+                self.client = client
+                self._bind(client)
+                self.me = await client.get_me()
+                self.status = "connected"
+                self._save_settings()
+                return
+            self.status = "await_qr"
+            for _attempt in range(4):
+                qr = await client.qr_login()
+                try:
+                    path = self._make_qr(qr.url)
+                    self.bot.tg.send_document(
+                        notify_chat, path,
+                        caption="QR для входа в твой аккаунт.\n"
+                                "Открой Telegram на телефоне: Настройки → Устройства → "
+                                "Подключить устройство → сканируй QR.\n"
+                                "QR живёт ~30 секунд, я пришлю новый при необходимости.")
+                except Exception as exc:  # noqa: BLE001
+                    log.info("QR не отправился: %s", exc)
+                    self.bot.tg.send(notify_chat, "QR: %s" % qr.url)
+                try:
+                    await qr.wait(timeout=90)
+                    break
+                except asyncio.TimeoutError:
+                    continue
+                except SessionPasswordNeededError:
+                    self.status = "await_password"
+                    self._pw_q = asyncio.Queue()
+                    self.bot.tg.send(notify_chat,
+                                     "Аккаунт защищён паролем (2FA).\n"
+                                     "Пришли: /ub password <пароль> — сообщение удалю.")
+                    password = await self._pw_q.get()
+                    await client.sign_in(password=password)
+                    break
+            if not await client.is_user_authorized():
+                self.status = "error"
+                self.error = "QR не подтверждён"
+                self.bot.tg.send(notify_chat, "Вход по QR не завершён. Попробуй /ub qr ещё раз.")
+                return
+            self.client = client
+            self.session = StringSession.save(client.session)
+            self._bind(client)
+            self.me = await client.get_me()
+            self.status = "connected"
+            self._save_settings()
+            self.bot.tg.send(notify_chat, "Userbot подключён как @%s."
+                             % getattr(self.me, "username", self.me.id))
+        except Exception as exc:  # noqa: BLE001
+            self.status = "error"
+            self.error = str(exc)[:300]
+            log.info("QR-вход не удался: %s", exc)
+            self.bot.tg.send(notify_chat, "Ошибка QR-входа: %s" % self.error)
+
     def start_login(self, phone):
         if not HAS_TELETHON:
             return False, "Telethon не установлен на сервере."
@@ -195,8 +273,8 @@ class Userbot:
 
         async def flow():
             client = TelegramClient(StringSession(self.session), self.api_id,
-                                    self.api_hash, device_model="Eva bot",
-                                    system_version="Windows 10", app_version="6.9")
+                                    self.api_hash, device_model="Desktop",
+                                    system_version="Windows 10", app_version="4.16.8")
             await client.connect()
             if await client.is_user_authorized():
                 self.client = client
@@ -325,6 +403,10 @@ def handle_command(bot, msg, text, chat_id, user, arg):
             pass
         bot.tg.send(chat_id, "api_id/api_hash сохранены. Теперь: /ub login <номер>")
         return True
+    if sub in ("qr", "куар", "qrlogin"):
+        ok, message = ub.start_qr(chat_id)
+        bot.tg.send(chat_id, message)
+        return True
     if sub in ("login", "вход", "войти"):
         phone = rest.replace(" ", "")
         if not phone:
@@ -339,6 +421,10 @@ def handle_command(bot, msg, text, chat_id, user, arg):
         return True
     if sub in ("password", "пароль", "2fa"):
         ok, message = ub.submit_password(rest.strip())
+        try:
+            bot.tg.delete(chat_id, msg.get("message_id"))
+        except Exception:
+            pass
         bot.tg.send(chat_id, message)
         return True
     if sub in ("on", "вкл", "включить"):
