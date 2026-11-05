@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "7.0"
+CODE_VERSION = "7.1"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -854,6 +854,9 @@ class Bot:
             return True
         if cmd in ("/welcome", "/приветствие"):
             self.tg.send(chat_id, sinfo.welcome(self.db), keyboard=BACK_MENU)
+            return True
+        if cmd in ("/docs", "/documents", "/документы", "/документ"):
+            self.send_documents(chat_id)
             return True
         if cmd in ("/rules", "/правила"):
             if arg:
@@ -2015,6 +2018,18 @@ class Bot:
                 self.dm_budget.pop(key, None)
         return ""
 
+    def send_documents(self, chat_id):
+        """Официальные документы: только закреплённый пост-документ Aetherlyn."""
+        try:
+            self.tg.call("forwardMessage", chat_id=chat_id,
+                         from_chat_id=config.DOCS_CHANNEL_ID,
+                         message_id=config.DOCS_MESSAGE_ID)
+        except Exception as exc:  # noqa: BLE001
+            log.info("документ не переслался: %s", exc)
+        text = "Официальные документы Aetherlyn:\n%s" % config.DOCS_URL
+        self.tg.send(chat_id, text)
+        return text
+
     def answer(self, question, chat_id, user, group=False, reply_to=None, keyboard=None):
         question = (question or "").strip()
         if not question:
@@ -2055,6 +2070,12 @@ class Bot:
                 traces.trace({"kind": "autoreply", "uid": uid0, "role": role,
                               "text": guard.safe_for_log(question)})
                 return auto, False
+
+        if re.search(r"(покажи|дай|скинь|где|какие|найди).{0,25}"
+                     r"(документ|документы|сборник|официальн\w*\s+документ)",
+                     question or "", re.I):
+            self.send_documents(chat_id)
+            return "Официальные документы Aetherlyn: %s" % config.DOCS_URL, False
 
         direct = self._direct_answer(question)
         if direct:

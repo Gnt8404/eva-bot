@@ -163,6 +163,19 @@ AUTOPOST_SIGNATURE = os.environ.get("AUTOPOST_SIGNATURE",
                                     "<Eva ии помощница>").strip()
 AUTOPOST_CHANNEL_TITLE = os.environ.get("AUTOPOST_CHANNEL_TITLE",
                                         "⚚ Aetherlyn - 2 сезон ⚚").strip()
+# ---------- официальные документы Aetherlyn ----------
+DOCS_URL = os.environ.get("DOCS_URL",
+                          "https://t.me/c/4322573414/803").strip()
+try:
+    DOCS_CHANNEL_ID = int(os.environ.get("DOCS_CHANNEL_ID",
+                                         "-1004322573414") or "-1004322573414")
+except ValueError:
+    DOCS_CHANNEL_ID = -1004322573414
+try:
+    DOCS_MESSAGE_ID = int(os.environ.get("DOCS_MESSAGE_ID", "803") or 803)
+except ValueError:
+    DOCS_MESSAGE_ID = 803
+
 # ---------- userbot (личный аккаунт, Telethon) ----------
 try:
     TELEGRAM_API_ID = int(os.environ.get("TELEGRAM_API_ID", "0") or 0)
