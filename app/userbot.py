@@ -518,7 +518,8 @@ class Userbot:
         if self.error:
             lines.append("Ошибка: %s" % self.error)
         lines.append("")
-        lines.append("Вход: /ub api <id> <hash> -> /ub login <номер> -> /ub code <код>")
+        lines.append("Включить сохранённую сессию: /connect on")
+        lines.append("Войти заново: /connect (QR) или /ub qr")
         return "\n".join(lines)
 
 
@@ -585,9 +586,15 @@ def handle_command(bot, msg, text, chat_id, user, arg):
     if sub in ("on", "вкл", "включить"):
         ub.enabled = True
         ub._save_settings()
-        if ub.session:
-            threading.Thread(target=ub._boot, daemon=True).start()
-        bot.tg.send(chat_id, "Userbot включён.")
+        if not ub.session:
+            bot.tg.send(chat_id, "Сессии нет. Подключи аккаунт: /connect (QR) "
+                                  "или /ub qr. После входа статус станет «подключён».")
+            return True
+        if ub.status == "connected":
+            bot.tg.send(chat_id, "Аккаунт уже подключён.")
+            return True
+        threading.Thread(target=ub._boot, daemon=True).start()
+        bot.tg.send(chat_id, "Включаю сессию… Проверь через минуту: /ub status")
         return True
     if sub in ("disconnect", "отключить"):
         ub.disconnect()
