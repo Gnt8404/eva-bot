@@ -1,4 +1,5 @@
 """Логика бота: меню, формы, жалобы, модерация, ответы по фактам, админка."""
+import json
 import logging
 import os
 import re
@@ -73,13 +74,23 @@ BACK_MENU = keyboard([[("В меню", "m:menu")]])
 
 
 def admin_panel_kb(is_super=False):
-    """Клавиатура админ-панели (доступна только админам — проверяется отдельно)."""
-    return keyboard([
-        [("Админы", "adm:admins"), ("Статистика", "adm:stats")],
+    """Клавиатура админ-панели (доступна только админам — проверяется отдельно).
+
+    Управление админами (раздел «Админы») видит только владелец; остальные
+    админы пользуются банами, консолью, античитом и статусом.
+    """
+    rows = []
+    if is_super:
+        rows.append([("Админы", "adm:admins"), ("Статистика", "adm:stats")])
+    else:
+        rows.append([("Статистика", "adm:stats")])
+    rows += [
+        [("Баны и разбаны", "adm:bans"), ("Рассылка", "adm:broadcast")],
         [("Консоль", "adm:console"), ("Античит", "adm:eva")],
         [("Статус сервера", "adm:status")],
         [("Обновить", "adm:home"), ("Закрыть", "adm:close")],
-    ])
+    ]
+    return keyboard(rows)
 
 # ---------- заявка на помощь ----------
 # код, как показывать в кнопке, по каким словам угадать категорию из текста
@@ -131,6 +142,8 @@ ADMIN_ONLY = {
     "/emoji", "/эмодзи", "/insultdm", "/violations", "/fact", "/facts", "/delfact",
     "/tickets", "/zayavki", "/answer", "/say",
     "/console", "/cmd", "/консоль", "/rcon", "/wl", "/whitelist", "/вайтлист",
+    "/ban", "/бан", "/забанить", "/unban", "/pardon", "/разбан", "/разбанить",
+    "/banlist", "/баны", "/банлист",
     "/eva", "/ева",
     "/kb", "/знания",
     "/moder", "/модерация", "/фильтр", "/check", "/проверка",
@@ -1087,6 +1100,33 @@ class Bot:
                 return True
             self.tg.send(chat_id, "%s\n> %s\n\n%s" % (head, arg, out[:3000]))
             return True
+
+        if cmd in ("/banlist", "/баны", "/банлист"):
+            self.admin_bans(chat_id)
+            return True
+        if cmd in ("/ban", "/бан", "/забанить"):
+            if not arg:
+                self.tg.send(chat_id, "Напиши: /ban <ник> [причина]\n"
+                                      "Список и разбан: /banlist")
+                return True
+            parts = arg.split(None, 1)
+            name = parts[0].strip()
+            reason = (parts[1].strip() if len(parts) > 1 else "Нарушение правил")
+            if not re.match(r"^[A-Za-z0-9_.-]{1,16}$", name):
+                self.tg.send(chat_id, "Ник может содержать буквы, цифры, _ . - (до 16 символов).")
+                return True
+            reason = reason.replace("\n", " ")[:100]
+            self.admin_server(chat_id, "ban %s %s" % (name, reason), refresh_bans=True)
+            return True
+        if cmd in ("/unban", "/pardon", "/разбан", "/разбанить"):
+            name = (arg.strip().split()[0] if arg.strip() else "")
+            if not re.match(r"^[A-Za-z0-9_.-]{1,16}$", name or ""):
+                self.tg.send(chat_id, "Напиши: /unban <ник>\n"
+                                      "Список забаненных: /banlist")
+                return True
+            self.admin_server(chat_id, "pardon " + name, refresh_bans=True)
+            return True
+
         if cmd == "/rcon":
             conf = rcon.cfg(self.db)
             sub = arg.split()[0].lower() if arg else ""
@@ -2404,6 +2444,58 @@ class Bot:
                          [("eva reload", "adm:run:eva reload")],
                          [("Админ-панель", "adm:home")]]))
 
+    def admin_bans(self, chat_id):
+        """Список забаненных и кнопки разбана (banned-players.json)."""
+        text = persist.read_text(self.db, "/banned-players.json")
+        lines = ["Баны и разбаны", ""]
+        names = []
+        if text is None:
+            lines.append("Не удалось получить список: панель не пускает "
+                         "(нужен новый API-ключ панели).")
+        else:
+            try:
+                data = json.loads(text) if text.strip() else []
+                for item in data if isinstance(data, list) else []:
+                    name = (item or {}).get("name")
+                    if name:
+                        names.append(str(name))
+            except ValueError:
+                pass
+            if names:
+                lines.append("Забанены (%d): %s" % (len(names), ", ".join(names[:40])))
+            else:
+                lines.append("Забаненных игроков нет.")
+        lines += ["", "Забанить: /ban <ник> [причина]", "Разбанить: /unban <ник>"]
+        rows = [[("Разбанить %s" % name, "adm:unban:%s" % name)] for name in names[:10]]
+        rows.append([("Обновить", "adm:bans")])
+        rows.append([("Админ-панель", "adm:home")])
+        self.tg.send(chat_id, "\n".join(lines), keyboard=keyboard(rows))
+
+    def admin_server(self, chat_id, cmd, refresh_bans=False):
+        """Выполнить серверную команду в фоне (бан/разбан/др.) и ответить."""
+        def work():
+            try:
+                ok, out, channel = rcon.run_any(self.db, cmd, timeout=8)
+            except Exception as exc:  # noqa: BLE001
+                self.tg.send(chat_id, "Ошибка: %s" % exc)
+                return
+            if refresh_bans:
+                if ok and out and channel:
+                    self.tg.send(chat_id, "/%s\nКанал: %s\n\n%s"
+                                 % (cmd, channel, (out or "")[:600]))
+                elif not ok:
+                    self.tg.send(chat_id, "Не выполнено: %s" % (out or "нет ответа"))
+                self.admin_bans(chat_id)
+                return
+            if not ok:
+                self.tg.send(chat_id, "Не выполнено: %s" % (out or "нет ответа"))
+                return
+            self.tg.send(chat_id, "/%s\nКанал: %s\n\n%s"
+                         % (cmd, channel or "—", (out or "(пусто)")[:3500]),
+                         keyboard=admin_panel_kb())
+
+        self.pool.submit(work)
+
     def admin_run(self, chat_id, cmd):
         """Выполнить серверную команду из админ-панели в фоне."""
         def work():
@@ -2429,9 +2521,31 @@ class Bot:
         if action in ("home", "refresh"):
             self.admin_panel(chat_id, uid)
         elif action == "admins":
+            if uid != config.SUPER_ADMIN:
+                self.tg.answer_callback(cbq.get("id"),
+                                        "Управление админами — только у владельца.", True)
+                return
             self.admin_admins(chat_id, uid)
         elif action == "stats":
             self.admin_stats(chat_id)
+        elif action == "bans":
+            self.admin_bans(chat_id)
+        elif action == "broadcast":
+            broadcast.room_panel(self, uid, chat_id)
+        elif action == "banhelp":
+            self.tg.send(chat_id,
+                         "Забанить игрока\n\n"
+                         "Напиши: /ban <ник> <причина>\n"
+                         "Например: /ban Vasya чит\n\n"
+                         "Список и разбан: /banlist",
+                         keyboard=keyboard([[("Баны и разбаны", "adm:bans")],
+                                            [("Админ-панель", "adm:home")]]))
+        elif action.startswith("unban:"):
+            name = action[6:].strip()
+            if not name:
+                return
+            self.tg.answer_callback(cbq.get("id"), "Разбан: %s" % name)
+            self.admin_server(chat_id, "pardon " + name, refresh_bans=True)
         elif action == "console":
             self.admin_console(chat_id)
         elif action == "eva":
@@ -2441,6 +2555,10 @@ class Bot:
             self.tg.send(chat_id, self.server_text(force=True),
                          keyboard=keyboard([[("Админ-панель", "adm:home")]]))
         elif action == "addhelp":
+            if uid != config.SUPER_ADMIN:
+                self.tg.answer_callback(cbq.get("id"),
+                                        "Управление админами — только у владельца.", True)
+                return
             self.tg.send(chat_id,
                          "Добавить админа\n\n"
                          "1) Ответь на сообщение человека и напиши /addadmin\n"

@@ -78,6 +78,27 @@ def load_admins_async(store):
     threading.Thread(target=work, daemon=True, name="load-admins").start()
 
 
+def read_text(store, path, timeout=8):
+    """Прочитать текстовый файл с сервера (например, banned-players.json)."""
+    conf = _conf(store)
+    if not conf:
+        return None
+    try:
+        url = "%s/api/client/servers/%s/files/download?file=%s" % (
+            conf["url"], conf["server"], urllib.parse.quote(path, safe=""))
+        req = urllib.request.Request(url, headers=rcon._panel_headers(conf))
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        signed = ((data.get("attributes") or {}).get("url") or "").strip()
+        if not signed:
+            return None
+        with urllib.request.urlopen(signed, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", "replace")
+    except Exception as exc:  # noqa: BLE001
+        log.info("не смог прочитать %s: %s", path, exc)
+        return None
+
+
 def save_admins(store):
     """Сохранить список админов на диск сервера. True — если записали."""
     conf = _conf(store)

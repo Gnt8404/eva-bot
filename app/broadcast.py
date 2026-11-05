@@ -37,12 +37,19 @@ LOCK = threading.RLock()
 # ----------------------------------------------------------------------
 # доступ и черновик
 # ----------------------------------------------------------------------
-def allowed(uid):
-    """Рассылка доступна только тем, кто перечислен в настройках."""
+def allowed(uid, bot=None):
+    """Рассылка доступна владельцу и администраторам бота."""
     try:
-        return int(uid) in config.BROADCAST_ADMINS
+        if int(uid) in config.BROADCAST_ADMINS:
+            return True
     except (TypeError, ValueError):
-        return False
+        pass
+    if bot is not None:
+        try:
+            return bool(bot.db.is_admin(uid))
+        except Exception:  # noqa: BLE001
+            return False
+    return False
 
 
 def _key(uid, name):
@@ -227,7 +234,8 @@ def panel_kb(uid, draft=None):
         [("Закреп: %s" % pin, "bc:pin"), ("Кнопка", "bc:btn")],
         [("Превью ссылок: %s" % prev, "bc:preview")],
         [("Предпросмотр", "bc:show"), ("Отправить", "bc:go")],
-        [("Сбросить", "bc:reset"), ("История", "bc:hist")],
+        [("Сбросить", "bc:reset"), ("История", "bc:hist"), ("Как это работает", "bc:help")],
+        [("Добавить Еву в чат", "url", "https://t.me/%s?startgroup=true" % config.BOT_USERNAME)],
     ])
 
 
@@ -309,7 +317,13 @@ def help_text():
             "/рассылка сброс — очистить черновик\n\n"
             "В панели настраиваются: текст или фото, получатели, пауза между чатами, "
             "тихий режим, закрепление, превью ссылок и кнопка-ссылка под сообщением. "
-            "Команда доступна только владельцу сервера.")
+            "Доступно владельцу и администраторам.\n\n"
+            "Как подключить Еву к чату:\n"
+            "1) Нажми «Добавить Еву в чат» и добавь @%s в группу или канал.\n"
+            "2) Дай боту право писать сообщения (и закреплять, если нужно).\n"
+            "3) Отправь в этом чате любое сообщение — чат появится в «Получатели».\n"
+            "Дальше выбери чаты, задай текст, паузу, тихий режим и запускай."
+            % config.BOT_USERNAME)
 
 
 def history_text(bot, limit=5):
@@ -493,7 +507,7 @@ CANCEL_WORDS = ("отмена", "/cancel", "стоп", "назад", "cancel")
 def capture(bot, msg, text, user):
     """Ловит следующее сообщение администратора, если панель его ждёт."""
     uid = (user or {}).get("id")
-    if not allowed(uid):
+    if not allowed(uid, bot):
         return False
     room = box(bot.db, uid)
     wait = room.wait()
@@ -639,8 +653,8 @@ def is_command(cmd):
 def handle_command(bot, msg, text, chat_id, user, cmd):
     uid = user.get("id")
     chat_type = (msg.get("chat") or {}).get("type") or "private"
-    if not allowed(uid):
-        bot.tg.send(chat_id, "Рассылка доступна только владельцу сервера.")
+    if not allowed(uid, bot):
+        bot.tg.send(chat_id, "Рассылка доступна только администрации сервера.")
         return True
     if chat_type != "private":
         bot.tg.send(chat_id, "%s, рассылка настраивается в личке — напиши мне @%s"
@@ -703,8 +717,8 @@ def handle_callback(bot, data, chat_id, user, cbq):
     uid = (user or {}).get("id")
     msg = cbq.get("message") or {}
     message_id = msg.get("message_id")
-    if not allowed(uid):
-        bot.tg.answer_callback(cbq.get("id"), "Рассылка доступна только владельцу.", True)
+    if not allowed(uid, bot):
+        bot.tg.answer_callback(cbq.get("id"), "Рассылка доступна только администрации.", True)
         return True
     action = data[3:]
     room = box(bot.db, uid)
@@ -718,6 +732,10 @@ def handle_callback(bot, data, chat_id, user, cbq):
     if action == "reset":
         room.reset()
         room_panel(bot, uid, chat_id, "Черновик очищен.", message_id=message_id)
+        return True
+    if action == "help":
+        bot.tg.send(chat_id, help_text(),
+                    keyboard=keyboard([[("Назад", "bc:p")]]))
         return True
     if action == "hist":
         try:
