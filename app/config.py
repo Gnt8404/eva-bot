@@ -159,3 +159,17 @@ def check_secrets():
     if not AI_KEY:
         missing.append("RM_AI_DEEPSEEK_KEY")
     return missing
+
+# ---------- RAG / защита / трейсы ----------
+RAG_ON = os.environ.get("RAG_ON", "on").strip().lower() not in ("off", "0", "no", "false")
+RAG_TOPK = int(os.environ.get("RAG_TOPK", "4") or 4)
+GUARD_ON = os.environ.get("GUARD_ON", "on").strip().lower() not in ("off", "0", "no", "false")
+TRACES_ON = os.environ.get("TRACES_ON", "on").strip().lower() not in ("off", "0", "no", "false")
+ANSWER_CACHE_TTL = int(os.environ.get("ANSWER_CACHE_TTL", "1800") or 1800)
+RESTART_ON = os.environ.get("RESTART_ON", "on").strip().lower() not in ("off", "0", "no", "false")
+
+# Qdrant (векторная база). Пусто — используется встроенный BM25-поиск по RAG.
+QDRANT_URL = os.environ.get("QDRANT_URL", "").strip().rstrip("/")
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "").strip()
+QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "aetherlyn_rules").strip()
+

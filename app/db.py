@@ -262,6 +262,19 @@ class Store:
         self.set("admins", ",".join(items))
         return True
 
+    def role(self, uid, username=None):
+        """Роль: owner | admin | helper | player."""
+        if uid == config.SUPER_ADMIN:
+            return "owner"
+        if self.is_admin(uid, username):
+            return "admin"
+        try:
+            if int(uid) in config.HELP_ADMINS:
+                return "helper"
+        except (TypeError, ValueError):
+            pass
+        return "player"
+
     def is_admin(self, uid, username=None):
         # username оставлен только для совместимости вызовов: доверяем лишь id,
         # иначе занявший чужой @ник получил бы права администратора.

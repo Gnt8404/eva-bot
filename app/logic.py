@@ -7,8 +7,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import (ai, broadcast, config, crafts, eva, kb, mckb, mc, moder, music, persist,
-               rcon, sinfo, tg, web)
+from . import (ai, broadcast, config, crafts, eva, guard, kb, mckb, mc, moder, music,
+               persist, rag, rcon, router, sinfo, tg, tools, traces, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
 from .typer import Typewriter, smooth_send
@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "6.6"
+CODE_VERSION = "6.7"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -141,6 +141,7 @@ ADMIN_ONLY = {
     "/cooldown", "/emotions", "/эмоции",
     "/emoji", "/эмодзи", "/insultdm", "/violations", "/fact", "/facts", "/delfact",
     "/tickets", "/zayavki", "/answer", "/say",
+    "/restart", "/перезапуск",
     "/console", "/cmd", "/консоль", "/rcon", "/wl", "/whitelist", "/вайтлист",
     "/ban", "/бан", "/забанить", "/unban", "/pardon", "/разбан", "/разбанить",
     "/banlist", "/баны", "/банлист",
@@ -293,6 +294,8 @@ class Bot:
             ("menu", "меню с кнопками"),
             ("help", "справка по командам"),
             ("status", "онлайн и версия сервера"),
+            ("rules", "вопрос по правилам Aetherlyn"),
+            ("ticket", "создать обращение к администрации"),
             ("info", "информация о сервере"),
             ("welcome", "приветственная карточка сервера"),
             ("rules", "правила сервера"),
@@ -811,6 +814,15 @@ class Bot:
             self.tg.send(chat_id, sinfo.welcome(self.db), keyboard=BACK_MENU)
             return True
         if cmd in ("/rules", "/правила"):
+            if arg:
+                block, ids = rag.context(arg, k=getattr(config, "RAG_TOPK", 4))
+                if not block:
+                    self.tg.send(chat_id, "В официальных документах Aetherlyn этого нет. "
+                                          "Можно создать тикет: /ticket <вопрос>",
+                                 keyboard=BACK_MENU)
+                    return True
+                self.tg.send(chat_id, block[:3800], keyboard=BACK_MENU)
+                return True
             self.tg.send(chat_id, "Правила сервера: %s\n\nВход: %s"
                          % (sinfo.get(self.db, "rules"), sinfo.get(self.db, "whitelist")),
                          keyboard=BACK_MENU)
@@ -818,6 +830,28 @@ class Bot:
         if cmd in ("/status", "/статус"):
             self.deliver(chat_id, self.server_text(force=True), keyboard=BACK_MENU,
                          group=group)
+            return True
+        if cmd in ("/ticket", "/тикет"):
+            if not arg:
+                self.tg.send(chat_id, "Напиши: /ticket кратко опиши проблему")
+                return True
+            ok, tid = tools.ticket(self.db, user, kind="other", subject=arg[:120], body=arg)
+            self.tg.send(chat_id, ("Тикет #%d создан. Администрация увидит его." % tid)
+                         if ok else "Не удалось создать тикет, попробуй позже.", keyboard=BACK_MENU)
+            return True
+        if cmd == "/restart":
+            if not is_admin:
+                self.tg.send(chat_id, "Перезапуск доступен только администрации сервера.")
+                return True
+            if arg.strip().lower() not in ("confirm", "да", "подтверждаю"):
+                self.tg.send(chat_id, "Перезапуск сервера: напиши /restart confirm. "
+                                      "Игра прервётся на 30-60 секунд.")
+                return True
+            if not getattr(config, "RESTART_ON", True):
+                self.tg.send(chat_id, "Перезапуск отключён в настройках.")
+                return True
+            ok, msg = tools.restart(self.db)
+            self.tg.send(chat_id, msg, keyboard=admin_panel_kb() if uid == config.SUPER_ADMIN else BACK_MENU)
             return True
         if cmd == "/craft":
             if not arg:
@@ -1935,6 +1969,34 @@ class Bot:
         if not question:
             return "Напиши вопрос.", False
 
+        uid0 = (user or {}).get("id")
+        role = self.db.role(uid0, (user or {}).get("username")) if uid0 else "player"
+        if getattr(config, "GUARD_ON", True):
+            ok, cleaned, why = guard.check(question)
+            if not ok:
+                traces.trace({"kind": "guard", "uid": uid0, "role": role,
+                              "reason": why, "text": guard.safe_for_log(question)})
+                return ("Не могу выполнять такие инструкции. Спроси про Aetherlyn: "
+                        "правила, сервер, плагины, крафты или поддержку.", False)
+            question = cleaned
+        intent = router.route(question, role)
+        if intent["tool"] == "ticket" and re.search(
+                r"(созда|оформ|запиши|открой|оставь)\w*\s+(тикет|заявк)", question, re.I):
+            ok, tid = tools.ticket(self.db, user, kind="other", subject=question[:120],
+                                   body=question)
+            traces.trace({"kind": "ticket", "uid": uid0, "ok": ok, "tid": tid,
+                          "text": guard.safe_for_log(question)})
+            if ok:
+                return ("Заявка #%d создана. Администрация увидит её в списке обращений." % tid,
+                        False)
+            return ("Не удалось создать заявку. Попробуй /zayavka или напиши администрации.", False)
+        if intent["intent"] == "restart" and intent["tool"] == "restart":
+            traces.trace({"kind": "route", "uid": uid0, "role": role, "intent": "restart"})
+            if not intent["allowed"]:
+                return ("Перезапуск сервера доступен только владельцу и админам.", False)
+            return ("Чтобы перезапустить сервер, напиши /restart confirm. "
+                    "Это прервёт игру на 30-60 секунд.", False)
+
         direct = self._direct_answer(question)
         if direct:
             return direct, False
@@ -1959,12 +2021,37 @@ class Bot:
         reply = ""
         with Typing(self.tg, chat_id):
             context = self._gather(question)
+            if getattr(config, "RAG_ON", True):
+                try:
+                    rag_block, rag_ids = rag.context(question, k=getattr(config, "RAG_TOPK", 4))
+                except Exception as exc:  # noqa: BLE001
+                    log.info("RAG не сработал: %s", exc)
+                    rag_block, rag_ids = "", []
+                context["rag"] = rag_block
+                context["rag_ids"] = rag_ids
+            role_block = {
+                "owner": "владелец проекта: доступны все действия, включая админ-панель.",
+                "admin": "администратор: баны/разбаны, перезапуск, консоль, тикеты.",
+                "helper": "помощник: тикеты и подсказки, без банов и перезапуска.",
+                "player": "игрок: только информация и создание тикета.",
+            }.get(role, "игрок")
+            context["role_block"] = role_block
+            started = time.time()
             reply, delivered = self._generate(question, chat_id, server_text, context,
                                               stream_to=chat_id, reply_to=reply_to,
                                               keyboard=keyboard, emotions=emotions,
                                               emoji=emoji, group=group)
             if reply:
                 self._cache_put(key, reply)
+        try:
+            traces.trace({"kind": "answer", "uid": uid0, "role": role,
+                          "intent": intent.get("intent"), "route": intent.get("tool") or "llm",
+                          "cache": bool(cached), "rag_ids": context.get("rag_ids") or [],
+                          "latency_ms": int((time.time() - started) * 1000),
+                          "len": len(reply or ""),
+                          "text": guard.safe_for_log(question)})
+        except Exception:
+            pass
         if not reply:
             reply = self.local_fallback(question)
         return reply, delivered
@@ -2080,6 +2167,8 @@ class Bot:
             extra_parts.append("Ссылки на видео, которые надо выдать игроку (приведи их как есть):\n"
                                + "\n".join("%s — %s" % (v["title"], v["url"]) for v in videos))
         system = ai.build_system(
+            rag_block=guard.sanitize_context(context.get("rag", "")) if getattr(config, "RAG_ON", True) else "",
+            role_block=context.get("role_block", ""),
             server_text=context.get("info", ""),
             knowledge=context.get("knowledge", ""),
             facts=context.get("facts", ""),
