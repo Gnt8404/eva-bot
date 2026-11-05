@@ -537,6 +537,7 @@ class Bot:
             return
         self.db.touch_user(user, chat_id, is_admin=self.db.is_admin(user.get("id"), user.get("username")))
         self.db.touch_chat(chat, user)
+        self._promote_pending_admins(user, chat_id)
 
         if is_group or is_channel:
             is_cmd = text.startswith("/")
@@ -1049,6 +1050,18 @@ class Bot:
                              "• или /addadmin 123456789",
                              keyboard=self.admin_admins_kb(uid))
                 return True
+            if str(target).startswith("@"):
+                pending = self._pending_admins()
+                if target in pending:
+                    self.tg.send(chat_id, "%s уже в ожидании — пусть напишет боту /start."
+                                 % target, keyboard=self.admin_admins_kb(uid))
+                    return True
+                pending.append(target)
+                self._save_pending(pending)
+                self.tg.send(chat_id, "Добавлю %s в админы, как только он(а) напишет "
+                                       "боту /start.\nМожно также добавить по числовому id."
+                             % target, keyboard=self.admin_admins_kb(uid))
+                return True
             if self.db.add_admin(target):
                 saved = persist.save_admins(self.db)
                 note = "" if saved else "\n(не сохранился на сервере — проверь панель/ключ)"
@@ -1066,6 +1079,17 @@ class Bot:
             if not target:
                 self.tg.send(chat_id, "Кого убрать? Ответь на сообщение человека "
                                       "или укажи @username / числовой id.")
+                return True
+            if str(target).startswith("@"):
+                pending = self._pending_admins()
+                if target in pending:
+                    pending.remove(target)
+                    self._save_pending(pending)
+                self.db.del_admin(target)
+                saved = persist.save_admins(self.db)
+                self.tg.send(chat_id, "Убран: %s (из ожидания тоже)%s"
+                             % (target, "" if saved else " (не сохранился на сервере)"),
+                             keyboard=self.admin_admins_kb(uid))
                 return True
             self.db.del_admin(target)
             saved = persist.save_admins(self.db)
@@ -2531,6 +2555,10 @@ class Bot:
                 lines.append("• %s — владелец" % who)
             else:
                 lines.append("• %s" % who)
+        pending = self._pending_admins()
+        if pending:
+            lines.append("")
+            lines.append("Ожидают /start: %s" % ", ".join(pending))
         lines += ["",
                   "Добавить: /addadmin @ник, /addadmin <id> или ответом на сообщение.",
                   "Убрать: кнопка ниже или /deladmin @ник.",
@@ -2714,11 +2742,17 @@ class Bot:
                          keyboard=ADMIN_MAIN_MENU)
 
     def _admin_target(self, msg, arg):
-        """Кого добавить/убрать: из ответа на сообщение, @username или id."""
+        """Кого добавить/убрать: ответ, пересылка, @username или id."""
         reply = (msg or {}).get("reply_to_message") or {}
         ru = reply.get("from") or {}
         if ru.get("id") and not ru.get("is_bot"):
             return str(ru["id"])
+        fwd = (msg or {}).get("forward_from") or {}
+        if not fwd:
+            origin = (msg or {}).get("forward_origin") or {}
+            fwd = origin.get("sender_user") or {}
+        if fwd.get("id") and not fwd.get("is_bot"):
+            return str(fwd["id"])
         who = (arg or "").strip().split()[0] if (arg or "").strip() else ""
         if not who:
             return None
@@ -2729,10 +2763,48 @@ class Bot:
                              (who[1:].lower(),))
             if rows:
                 return str(rows[0]["user_id"])
-            return None
+            # Telegram не умеет искать юзеров по @нику, пока они не писали боту.
+            # Возвращаем @ник — добавим в «ожидание».
+            return who
         if who.lower().startswith("id") and who[2:].isdigit():
             return who[2:]
         return None
+
+    # --------------------------------------------------- отложенные админы
+    def _pending_admins(self):
+        raw = self.db.get("pending_admins") or "[]"
+        try:
+            data = json.loads(raw)
+            return [str(x) for x in data if str(x).strip()]
+        except ValueError:
+            return []
+
+    def _save_pending(self, items):
+        self.db.set("pending_admins", json.dumps(items[:50], ensure_ascii=False))
+
+    def _promote_pending_admins(self, user, chat_id=None):
+        uname = (user or {}).get("username") or ""
+        uid = (user or {}).get("id")
+        if not uname or not uid:
+            return
+        pending = self._pending_admins()
+        if not pending:
+            return
+        low = uname.lower()
+        match = [p for p in pending if p.lstrip("@").lower() == low]
+        if not match:
+            return
+        self.db.add_admin(str(uid))
+        self.db.del_admin("@%s" % uname)
+        self._save_pending([p for p in pending if p not in match])
+        saved = persist.save_admins(self.db)
+        log.info("выдан админ %s (%s), сохранение: %s", uname, uid, saved)
+        for target in (config.SUPER_ADMIN, uid):
+            try:
+                self.tg.send(target, "Админ выдан: @%s (id %s)%s"
+                             % (uname, uid, "" if saved else " (не сохранился на сервере)"))
+            except Exception:
+                pass
 
     def on_callback(self, cbq):
         data = cbq.get("data") or ""
