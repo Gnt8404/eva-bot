@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.3"
+CODE_VERSION = "10.4"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -2003,8 +2003,21 @@ class Bot:
             return True
         if now - self._sub_notice.get(uid, 0) > 300:
             self._sub_notice[uid] = now
-            self.tg.send(chat_id, subscription.links_text(),
-                         reply_to=(msg or {}).get("message_id"))
+            sent = False
+            try:
+                self.tg.send(uid, subscription.links_text())
+                sent = True
+            except Exception as exc:  # noqa: BLE001
+                log.info("условия в ЛС не отправились: %s", exc)
+            if is_group:
+                if sent:
+                    self.tg.send(chat_id, "Написала условия подписки тебе в ЛС.",
+                                 reply_to=(msg or {}).get("message_id"))
+                else:
+                    self.tg.send(chat_id, "Открой личку с @%s и нажми /start — "
+                                          "там условия подписки."
+                                 % (self.me.get("username") or "RM_AI23bot"),
+                                 reply_to=(msg or {}).get("message_id"))
         return False
 
     def owner_dm_action(self, msg, text, chat_id, user):

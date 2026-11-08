@@ -3,12 +3,10 @@ from . import config
 
 
 def links_text():
-    return ("Чтобы пользоваться Евой, подпишись на официальные канал и группу "
-            "Aetherlyn:\n"
-            "• Канал: %s\n"
-            "• Группа: %s\n\n"
+    return ("Чтобы пользоваться Евой, подпишись на официальный канал Aetherlyn:\n"
+            "• Канал: %s\n\n"
             "После подписки напиши /start."
-            % (config.CHANNEL_INVITE_URL, config.GROUP_INVITE_URL))
+            % config.CHANNEL_INVITE_URL)
 
 
 def _status(tg, chat_id, user_id):
@@ -23,9 +21,7 @@ def subscribed(tg, user_id):
     """Подписан ли пользователь на канал и группу (не left/kicked)."""
     if not getattr(config, "SUB_CHECK_ON", True):
         return True
-    for chat_id in (config.REQUIRED_CHANNEL_ID, config.REQUIRED_GROUP_ID):
-        if not chat_id:
-            continue
-        if _status(tg, chat_id, user_id) in ("left", "kicked"):
-            return False
+    chat_id = getattr(config, "REQUIRED_CHANNEL_ID", 0)
+    if chat_id and _status(tg, chat_id, user_id) in ("left", "kicked"):
+        return False
     return True
