@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.2"
+CODE_VERSION = "10.3"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -250,6 +250,11 @@ class Bot:
         # Список админов хранится ещё и в файле на диске игрового сервера:
         # облачная база временная, а файл переживает перезапуск.
         persist.load_admins_async(self.db)
+        for _adm in getattr(config, "FALLBACK_ADMINS", []):
+            try:
+                self.db.add_admin(str(_adm))
+            except Exception:
+                pass
         self.state = {}                       # user_id -> черновик формы
         self.cooldown = {}                    # (chat_id, user_id) -> время последнего вопроса
         self.warned = {}                      # (chat_id, user_id) -> время последнего предупреждения

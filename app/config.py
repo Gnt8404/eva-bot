@@ -170,6 +170,10 @@ CHANNEL_INVITE_URL = "https://t.me/+utbI0nXnzAhmMWYy"
 GROUP_INVITE_URL = "https://t.me/+8QHP3S2DRsAzNjli"
 SUB_CHECK_ON = os.environ.get("SUB_CHECK_ON", "on").lower() not in ("off", "0", "no")
 
+# Резервный список админов, если файл на панели недоступен (ключ истёк и т.п.).
+FALLBACK_ADMINS = [x.strip() for x in os.environ.get(
+    "ADMINS", "6343943842,8934016131,8657177809").split(",") if x.strip()]
+
 # ---------- официальные документы Aetherlyn ----------
 DOCS_URL = os.environ.get("DOCS_URL",
                           "https://t.me/c/4322573414/803").strip()
