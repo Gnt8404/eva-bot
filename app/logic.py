@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.4"
+CODE_VERSION = "10.5"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -2001,7 +2001,7 @@ class Bot:
             self._sub_cache[uid] = (ok, now)
         if ok:
             return True
-        if now - self._sub_notice.get(uid, 0) > 300:
+        if force or now - self._sub_notice.get(uid, 0) > 300:
             self._sub_notice[uid] = now
             sent = False
             try:

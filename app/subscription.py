@@ -5,7 +5,7 @@ from . import config
 def links_text():
     return ("Чтобы пользоваться Евой, подпишись на официальный канал Aetherlyn:\n"
             "• Канал: %s\n\n"
-            "После подписки напиши /start."
+            "После подписки напиши /start ещё раз."
             % config.CHANNEL_INVITE_URL)
 
 
