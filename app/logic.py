@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.1"
+CODE_VERSION = "10.2"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -1987,8 +1987,9 @@ class Bot:
         if is_group and not (text.startswith("/") or self._woken(msg, text)):
             return True
         now = time.time()
+        force = (text or "").strip().lower() in ("/start", "start", "/пуск")
         cached = self._sub_cache.get(uid)
-        if cached and now - cached[1] < 300:
+        if cached and now - cached[1] < 300 and not force:
             ok = cached[0]
         else:
             ok = subscription.subscribed(self.tg, uid)
