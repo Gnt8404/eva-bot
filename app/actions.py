@@ -13,7 +13,8 @@ class Denied(Exception):
     """Действие запрещено guardrails."""
 
 
-ALLOWED = {"copy_to_owner", "send_to_owner", "notify_owner"}
+ALLOWED = {"copy_to_owner", "send_to_owner", "notify_owner",
+           "diagram", "document"}
 DEFAULT_TEXT = "Я на связи. Напиши, что отправить в личку."
 
 
@@ -29,6 +30,8 @@ def check(actor_id, action, target_id, content=""):
         return False, "Пустой текст."
     if action == "send_to_owner" and len(content) > 3500:
         return False, "Слишком длинный текст (максимум 3500)."
+    if action in ("diagram", "document") and len(content or "") > 8000:
+        return False, "Слишком длинный текст для файла (максимум 8000)."
     return True, ""
 
 
@@ -41,6 +44,24 @@ def parse_request(text):
     low = raw.lower().replace("ё", "е")
     if "ева" not in low:
         return None
+    # «сделай диаграмму/схему/график»
+    if re.search(r"(сделай|создай|построй|нарисуй|сгенерируй|сформируй)"
+                 r".{0,45}(диаграмм|схем|график|чарт|chart|mind\s*map|блок-схем)",
+                 low):
+        m = re.search(r"(диаграмм\w*|схем\w*|график\w*|чарт\w*|chart\w*|"
+                      r"mind\s*map|блок-схем\w*)", raw, re.I)
+        tail = raw[m.end():].strip(" :—-.,") if m else ""
+        if tail.lower().startswith("из этого"):
+            tail = ""
+        return {"action": "diagram", "content": tail}
+    # «сделай документ»
+    if re.search(r"(сделай|создай|построй|сформируй|подготовь)"
+                 r".{0,45}(документ|докс|docx|ворд|word|файл)", low):
+        m = re.search(r"(документ\w*|докс\w*|docx|ворд\w*|word|файл\w*)", raw, re.I)
+        tail = raw[m.end():].strip(" :—-.,") if m else ""
+        if tail.lower().startswith("из этого"):
+            tail = ""
+        return {"action": "document", "content": tail}
     # «скинь/перешли мне это в лс»
     if re.search(r"(скинь|перешли|отправь|кинь|скопируй|пришли)"
                  r".{0,40}(мне|в\s+лс|в\s+личку|сюда)", low):

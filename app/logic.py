@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import (actions, ai, config, crafts, guard, kb, mckb, mc, moder, music,
-               persist, rag, rcon, router, sinfo, tg, tools, traces, web)
+               persist, rag, rcon, router, sinfo, tg, tools, traces, visuals, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
 from .typer import Typewriter, smooth_send
@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.6"
+CODE_VERSION = "10.7"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -1987,6 +1987,37 @@ class Bot:
                       "reason": reason, "chat": chat_id})
         if not ok:
             self.tg.send(chat_id, "Не выполнено: %s" % reason)
+            return True
+        if action in ("diagram", "document"):
+            reply = (msg or {}).get("reply_to_message") or {}
+            source = (reply.get("text") or reply.get("caption") or content or "").strip()
+            source = re.sub(r"^(из этого|из текста|это)\s*", "", source, flags=re.I).strip()
+            if not source:
+                self.tg.send(chat_id, "Отметь сообщение с текстом или напиши текст "
+                                      "после команды — из него сделаю файл.")
+                return True
+            ok, reason = actions.check(user.get("id"), action, config.SUPER_ADMIN, source)
+            if not ok:
+                self.tg.send(chat_id, "Не выполнено: %s" % reason)
+                return True
+            try:
+                if action == "diagram":
+                    path, title = visuals.chart(source)
+                else:
+                    path, title = visuals.document(source)
+                self.tg.send_document(config.SUPER_ADMIN, path,
+                                      caption="%s\n«Eva ии помощница»" % title)
+                if str(chat_id) != str(config.SUPER_ADMIN):
+                    self.tg.send(chat_id, "Готово, отправила файл в ЛС.")
+                else:
+                    self.tg.send(chat_id, "Готово.")
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+            except Exception as exc:  # noqa: BLE001
+                log.info("файл не создан: %s", exc)
+                self.tg.send(chat_id, "Не смогла создать файл: %s" % str(exc)[:160])
             return True
         if action == "copy_to_owner":
             reply = (msg or {}).get("reply_to_message") or {}
