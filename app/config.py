@@ -163,17 +163,6 @@ AUTOPOST_SIGNATURE = os.environ.get("AUTOPOST_SIGNATURE",
                                     "«Eva ии помощница»").strip()
 AUTOPOST_CHANNEL_TITLE = os.environ.get("AUTOPOST_CHANNEL_TITLE",
                                         "⚚ Aetherlyn - 2 сезон ⚚").strip()
-# ---------- обязательная подписка ----------
-REQUIRED_CHANNEL_ID = -1004322573414
-REQUIRED_GROUP_ID = -1004324001845
-CHANNEL_INVITE_URL = "https://t.me/+utbI0nXnzAhmMWYy"
-GROUP_INVITE_URL = "https://t.me/+8QHP3S2DRsAzNjli"
-SUB_CHECK_ON = os.environ.get("SUB_CHECK_ON", "on").lower() not in ("off", "0", "no")
-
-# Резервный список админов, если файл на панели недоступен (ключ истёк и т.п.).
-FALLBACK_ADMINS = [x.strip() for x in os.environ.get(
-    "ADMINS", "6343943842,8934016131,8657177809").split(",") if x.strip()]
-
 # ---------- официальные документы Aetherlyn ----------
 DOCS_URL = os.environ.get("DOCS_URL",
                           "https://t.me/c/4322573414/803").strip()

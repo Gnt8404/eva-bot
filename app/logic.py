@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import (actions, ai, config, crafts, guard, kb, mckb, mc, moder, music,
-               persist, rag, rcon, router, sinfo, subscription, tg, tools, traces, web)
+               persist, rag, rcon, router, sinfo, tg, tools, traces, web)
 from .db import Store
 from .tg import Tg, Typing, esc, keyboard, mention, strip_tags
 from .typer import Typewriter, smooth_send
@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.5"
+CODE_VERSION = "10.6"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -275,8 +275,6 @@ class Bot:
         self.last_poll = time.time()    # когда поллинг последний раз отвечал
         self._rcon_state = None         # последний результат проверки консоли
         self._rcon_tick = 0
-        self._sub_cache = {}
-        self._sub_notice = {}
         self.admin_aliases = {}
         threading.Thread(target=self._load_admin_aliases, daemon=True,
                          name="admin-aliases").start()
@@ -514,8 +512,6 @@ class Bot:
             pass
         self._promote_pending_admins(user, chat_id)
         if text and self.owner_dm_action(msg, text, chat_id, user):
-            return
-        if not self._subscription_ok(msg, text, chat_id, user, is_group, is_channel):
             return
 
         if is_group or is_channel:
@@ -1976,49 +1972,6 @@ class Bot:
             for key in [k for k, v in list(self.dm_budget.items()) if now - v[2] > 86400][:500]:
                 self.dm_budget.pop(key, None)
         return ""
-
-    def _subscription_ok(self, msg, text, chat_id, user, is_group, is_channel):
-        """Проверка подписки на канал и группу (owner/admin — без проверки)."""
-        if is_channel or not getattr(config, "SUB_CHECK_ON", True):
-            return True
-        uid = user.get("id")
-        if not uid:
-            return True
-        if str(uid) == str(config.SUPER_ADMIN):
-            return True
-        if self.db.is_admin(uid, user.get("username")):
-            return True
-        # в группе проверяем только когда обращаются к Еве
-        if is_group and not (text.startswith("/") or self._woken(msg, text)):
-            return True
-        now = time.time()
-        force = (text or "").strip().lower() in ("/start", "start", "/пуск")
-        cached = self._sub_cache.get(uid)
-        if cached and now - cached[1] < 300 and not force:
-            ok = cached[0]
-        else:
-            ok = subscription.subscribed(self.tg, uid)
-            self._sub_cache[uid] = (ok, now)
-        if ok:
-            return True
-        if force or now - self._sub_notice.get(uid, 0) > 300:
-            self._sub_notice[uid] = now
-            sent = False
-            try:
-                self.tg.send(uid, subscription.links_text())
-                sent = True
-            except Exception as exc:  # noqa: BLE001
-                log.info("условия в ЛС не отправились: %s", exc)
-            if is_group:
-                if sent:
-                    self.tg.send(chat_id, "Написала условия подписки тебе в ЛС.",
-                                 reply_to=(msg or {}).get("message_id"))
-                else:
-                    self.tg.send(chat_id, "Открой личку с @%s и нажми /start — "
-                                          "там условия подписки."
-                                 % (self.me.get("username") or "RM_AI23bot"),
-                                 reply_to=(msg or {}).get("message_id"))
-        return False
 
     def owner_dm_action(self, msg, text, chat_id, user):
         """Только владелец: переслать сообщение/файл себе в ЛС или написать в ЛС."""
