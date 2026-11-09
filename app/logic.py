@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.8"
+CODE_VERSION = "10.9"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -1974,15 +1974,21 @@ class Bot:
         return ""
 
     def owner_dm_action(self, msg, text, chat_id, user):
-        """Только владелец: переслать сообщение/файл себе в ЛС или написать в ЛС."""
-        if str(user.get("id")) != str(config.SUPER_ADMIN):
-            return False
+        """Админы с админ-панелью: файл/сообщение себе в ЛС; остальным отказ."""
         req = actions.parse_request(text)
         if not req:
             return False
+        actor = user.get("id")
+        is_admin = (str(actor) == str(config.SUPER_ADMIN)
+                    or self.db.is_admin(actor, user.get("username")))
+        if not is_admin:
+            self.tg.send(chat_id, "Действия «в ЛС», диаграммы и документы доступны "
+                                  "только администрации с доступом к /admin.")
+            return True
         action = req.get("action")
         content = req.get("content") or ""
-        ok, reason = actions.check(user.get("id"), action, config.SUPER_ADMIN, content)
+        target = actor
+        ok, reason = actions.check(actor, action, target, content, is_admin=True)
         traces.trace({"kind": "owner_action", "action": action, "ok": ok,
                       "reason": reason, "chat": chat_id})
         if not ok:
@@ -1996,7 +2002,7 @@ class Bot:
                 self.tg.send(chat_id, "Отметь сообщение с текстом или напиши текст "
                                       "после команды — из него сделаю файл.")
                 return True
-            ok, reason = actions.check(user.get("id"), action, config.SUPER_ADMIN, source)
+            ok, reason = actions.check(actor, action, target, source, is_admin=True)
             if not ok:
                 self.tg.send(chat_id, "Не выполнено: %s" % reason)
                 return True
@@ -2005,8 +2011,8 @@ class Bot:
                     path, title = visuals.chart(source)
                 else:
                     path, title = visuals.document(source)
-                self.tg.send_document(config.SUPER_ADMIN, path, caption=title)
-                if str(chat_id) != str(config.SUPER_ADMIN):
+                self.tg.send_document(target, path, caption=title)
+                if str(chat_id) != str(target):
                     self.tg.send(chat_id, "Готово, отправила файл в ЛС.")
                 else:
                     self.tg.send(chat_id, "Готово.")
@@ -2025,16 +2031,16 @@ class Bot:
                 self.tg.send(chat_id, "Отметь сообщение или файл, который нужно "
                                       "переслать в ЛС, и повтори.")
                 return True
-            if str(chat_id) == str(config.SUPER_ADMIN):
+            if str(chat_id) == str(target):
                 self.tg.send(chat_id, "Это сообщение уже в ЛС.")
                 return True
             try:
-                self.tg.call("copyMessage", chat_id=config.SUPER_ADMIN,
+                self.tg.call("copyMessage", chat_id=target,
                              from_chat_id=chat_id, message_id=mid)
             except Exception as exc:  # noqa: BLE001
                 log.info("copyMessage не удался: %s", exc)
                 try:
-                    self.tg.call("forwardMessage", chat_id=config.SUPER_ADMIN,
+                    self.tg.call("forwardMessage", chat_id=target,
                                  from_chat_id=chat_id, message_id=mid)
                 except Exception as exc2:  # noqa: BLE001
                     log.info("forwardMessage не удался: %s", exc2)
@@ -2043,13 +2049,13 @@ class Bot:
             self.tg.send(chat_id, "Отправила в ЛС.")
             return True
         if action == "send_to_owner":
-            self.tg.send(config.SUPER_ADMIN, content)
-            if str(chat_id) != str(config.SUPER_ADMIN):
+            self.tg.send(target, content)
+            if str(chat_id) != str(target):
                 self.tg.send(chat_id, "Отправила в ЛС.")
             return True
         # notify_owner
-        self.tg.send(config.SUPER_ADMIN, content or actions.DEFAULT_TEXT)
-        if str(chat_id) != str(config.SUPER_ADMIN):
+        self.tg.send(target, content or actions.DEFAULT_TEXT)
+        if str(chat_id) != str(target):
             self.tg.send(chat_id, "Написала тебе в ЛС.")
         return True
 
@@ -2097,10 +2103,6 @@ class Bot:
                 return ("Перезапуск сервера доступен только владельцу и админам.", False)
             return ("Чтобы перезапустить сервер, напиши /restart confirm. "
                     "Это прервёт игру на 30-60 секунд.", False)
-
-        if uid0 and str(uid0) != str(config.SUPER_ADMIN):
-            return ("Свободные вопросы отвечаю только владельцу. "
-                    "Доступны меню и команды: /menu", False)
 
         if re.search(r"(покажи|дай|скинь|где|какие|найди).{0,25}"
                      r"(документ|документы|сборник|официальн\w*\s+документ)",

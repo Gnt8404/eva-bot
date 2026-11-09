@@ -18,14 +18,14 @@ ALLOWED = {"copy_to_owner", "send_to_owner", "notify_owner",
 DEFAULT_TEXT = "Я на связи. Напиши, что отправить в личку."
 
 
-def check(actor_id, action, target_id, content=""):
+def check(actor_id, action, target_id, content="", is_admin=False):
     """Проверить действие. Возвращает (ok, reason)."""
-    if str(actor_id) != str(config.SUPER_ADMIN):
-        return False, "Это действие доступно только владельцу."
+    if not is_admin and str(actor_id) != str(config.SUPER_ADMIN):
+        return False, "Это действие доступно только администрации."
     if action not in ALLOWED:
         return False, "Неизвестное действие."
-    if str(target_id) != str(config.SUPER_ADMIN):
-        return False, "Получатель может быть только владелец."
+    if str(target_id) != str(actor_id):
+        return False, "Получатель может быть только сам отправитель."
     if action in ("send_to_owner", "notify_owner") and not (content or "").strip():
         return False, "Пустой текст."
     if action == "send_to_owner" and len(content) > 3500:
