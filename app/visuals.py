@@ -157,28 +157,54 @@ def diagram(text, caption=None):
     return path, (caption or title)
 
 
+def clean_source(text):
+    """Убрать командную обёртку «Ева, сделай диаграмму: ...»."""
+    raw = (text or "").strip()
+    cleaned = re.sub(r"^\s*ева[,\s!.]*", "", raw, flags=re.I)
+    cleaned = re.sub(
+        r"^(?:сделай|создай|построй|сформируй|подготовь)\s+"
+        r"(?:из\s+(?:этого|текста)\s+)?(?:мне\s+)?"
+        r"(?:диаграмм\w*|документ\w*|схем\w*|график\w*|чарт\w*|файл\w*)"
+        r"\s*[:\-—]?\s*", "", cleaned, flags=re.I)
+    return cleaned.strip() or raw
+
+
+def _safe_name(title):
+    name = re.sub(r'[\\/:*?"<>|]', "", title or "").strip()
+    name = re.sub(r"\s+", " ", name)[:60]
+    return name or "Документ"
+
+
 def document(text, caption=None):
-    """Сделать DOCX-документ из текста и вернуть путь."""
-    title, items = parse_text(text)
+    """DOCX: только исходный текст, без списков и дублей."""
+    source = clean_source(text)
+    lines = [ln.rstrip() for ln in source.splitlines() if ln.strip()]
+    if not lines:
+        lines = [source]
+    # Заголовок: первая строка, если она короткая; иначе первые слова.
+    first = lines[0].strip()
+    title = first if len(first) <= 70 and len(first.split()) <= 10 else " ".join(first.split()[:6])[:70]
+    body = lines[1:] if len(lines) > 1 else []
+    if not body:
+        # одна строка: заголовок отдельно не дублируем
+        title = title or "Документ"
     if HAS_DOCX:
         doc = Document()
-        doc.add_heading(title, level=1)
-        for item in items:
-            p = doc.add_paragraph(item, style="List Bullet")
-            for run in p.runs:
+        if len(lines) > 1:
+            doc.add_heading(title, level=1)
+        for line in (body if body else lines):
+            para = doc.add_paragraph(line)
+            for run in para.runs:
                 run.font.size = Pt(12)
-        # исходный текст целиком, если он длиннее списка
-        source = (text or "").strip()
-        if source and len(source) > 80:
-            doc.add_paragraph("")
-            doc.add_paragraph(source[:5000])
-        path = os.path.join(VISUAL_DIR, "document_%d.docx" % int(time.time() * 1000))
+        fname = _safe_name(title) + "_%d.docx" % int(time.time())
+        path = os.path.join(VISUAL_DIR, fname)
         doc.save(path)
         return path, (caption or title)
     # запасной вариант — текстовый файл
-    path = os.path.join(VISUAL_DIR, "document_%d.txt" % int(time.time() * 1000))
+    fname = _safe_name(title) + "_%d.txt" % int(time.time())
+    path = os.path.join(VISUAL_DIR, fname)
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write((text or "").strip())
+        fh.write(source)
     return path, (caption or title)
 
 

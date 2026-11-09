@@ -65,7 +65,7 @@ ADMIN_MAIN_MENU = keyboard([
 
 # Версия кода. Видна в /version и в логе при старте — по ней сразу понятно,
 # какой именно код сейчас работает на сервере.
-CODE_VERSION = "10.7"
+CODE_VERSION = "10.8"
 
 # Кнопки главного меню плоским списком (для лога, /version и самопроверки).
 MENU_TITLES = [b["text"] for row in MAIN_MENU["inline_keyboard"] for b in row]
@@ -2005,8 +2005,7 @@ class Bot:
                     path, title = visuals.chart(source)
                 else:
                     path, title = visuals.document(source)
-                self.tg.send_document(config.SUPER_ADMIN, path,
-                                      caption="%s\n«Eva ии помощница»" % title)
+                self.tg.send_document(config.SUPER_ADMIN, path, caption=title)
                 if str(chat_id) != str(config.SUPER_ADMIN):
                     self.tg.send(chat_id, "Готово, отправила файл в ЛС.")
                 else:
