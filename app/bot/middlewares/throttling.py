@@ -11,6 +11,7 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
 
+from app.bot.group import is_group
 from app.config import Settings
 from app.db.models import User
 from app.db.session import Database
@@ -35,6 +36,14 @@ class ThrottlingMiddleware(BaseMiddleware):
             return await handler(event, data)
         settings: Settings = data["settings"]
         if tg_user.id == settings.owner_id:
+            return await handler(event, data)
+        if isinstance(event, Message) and is_group(event):
+            return await handler(event, data)
+        if (
+            isinstance(event, CallbackQuery)
+            and isinstance(event.message, Message)
+            and is_group(event.message)
+        ):
             return await handler(event, data)
         now = time.monotonic()
         minute = self._minute[tg_user.id]
