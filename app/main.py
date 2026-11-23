@@ -200,6 +200,10 @@ async def run() -> None:
                 "status": "ok" if db_ok else "degraded",
                 "db": db_ok,
                 "llm": settings.llm_ready,
+                "general_mode": settings.allow_general_topics,
+                "webhook_secret_source": (
+                    "env" if settings.webhook_secret.get_secret_value().strip() else "derived"
+                ),
                 "panel": bool(panel and panel.ready),
                 "rcon": settings.rcon_ready,
                 "kb_chunks": await kb.chunk_count(),

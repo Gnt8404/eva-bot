@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -231,8 +233,21 @@ class Settings(BaseSettings):
 
     @property
     def webhook_token(self) -> str:
-        """Telegram allows only A-Z, a-z, 0-9, underscore and hyphen in secret_token."""
-        return re.sub(r"[^A-Za-z0-9_-]", "", self.webhook_secret.get_secret_value())[:256]
+        """Telegram allows only A-Z, a-z, 0-9, underscore and hyphen in secret_token.
+
+        Render's generated ``WEBHOOK_SECRET`` can be unavailable/empty. In that case a
+        stable token is derived from the bot token, which is itself secret, so webhook
+        authentication stays mandatory instead of silently disabling it.
+        """
+        explicit = re.sub(r"[^A-Za-z0-9_-]", "", self.webhook_secret.get_secret_value())[:256]
+        if explicit:
+            return explicit
+        if not self.token:
+            return ""
+        digest = hmac.new(
+            self.token.encode("utf-8"), b"eva-webhook-secret-v1", hashlib.sha256
+        ).hexdigest()
+        return f"eva_{digest}"
 
     def webhook_url(self) -> str:
         return f"{self.webhook_base}{self.webhook_path}"

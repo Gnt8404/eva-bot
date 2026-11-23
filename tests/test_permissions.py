@@ -120,3 +120,18 @@ async def test_ticket_decision_is_owner_only(settings: Settings, tickets: Ticket
 def test_webhook_token_is_sanitized(settings: Settings) -> None:
     settings.webhook_secret = SecretStr("abc+def/ghi==_jkl-")
     assert settings.webhook_token == "abcdefghi_jkl-"
+
+
+def test_webhook_token_falls_back_to_derived_secret() -> None:
+    first = Settings(
+        bot_token=SecretStr("123456:abcdef"),
+        webhook_secret=SecretStr(""),
+    ).webhook_token
+    second = Settings(
+        bot_token=SecretStr("123456:abcdef"),
+        webhook_secret=SecretStr(""),
+    ).webhook_token
+    assert first == second
+    assert first.startswith("eva_")
+    assert len(first) == 68
+    assert "abcdef" not in first
