@@ -81,6 +81,7 @@ python -m app.main
 | `OWNER_ID` | `6343943842`, единственный владелец консоли и админ-меню |
 | `TEAM_CHAT_ID` | служебный чат команды; `0` = копии не отправляются |
 | `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | любой OpenAI-совместимый endpoint |
+| `ALLOW_GENERAL_TOPICS` | `true` — свободные ответы на вопросы вне Aetherlyn (нужен LLM); по умолчанию `false` |
 | `PANEL_BASE`, `PANEL_KEY`, `SERVER_ID` | Pterodactyl, read-only по умолчанию |
 | `RCON_*` | RCON для owner-команд и статуса |
 | `TG_API_ID`, `TG_API_HASH`, `TG_SESSION` | read-only чтение постов каналов |
@@ -90,6 +91,11 @@ python -m app.main
 `PAYMENT_CARD_*` задаются в реальном `.env` на хосте. В публичном `.env.example` их нет.
 Если LLM-ключ пуст, бот работает в детерминированном режиме: отвечает только найденными
 фрагментами базы и не вызывает LLM. Это штатный режим, а не заглушка.
+
+`ALLOW_GENERAL_TOPICS=false` сохраняет жёсткое правило «только Aetherlyn».
+При `true` вопросы вне темы уходят в LLM как свободный помощник; защита от инъекций,
+секретов, мошенничества и серверных действий остаётся включённой. На текущем Render
+свободный режим включён вместе с DeepSeek.
 
 Ключи маскируются в логах (`bot...:****`, `ptlc_****`, `sk-****`, номера карт).
 `.env` добавлен в `.gitignore`; права на файл — `600`.
@@ -228,7 +234,8 @@ TLS и `/health` остаются на хосте (nginx). Для polling убе
 Docker, план `free`, healthcheck `/health`, webhook-режим, `PORT` и
 `RENDER_EXTERNAL_URL` подхватываются автоматически. Секреты `BOT_TOKEN`,
 `PANEL_KEY`, `RCON_PASSWORD`, `LLM_API_KEY` задаются в Dashboard → Environment
-(в git их нет). Приложение само ставит webhook на публичный URL.
+(в git их нет). `ALLOW_GENERAL_TOPICS=true` включает свободные ответы через DeepSeek.
+Приложение само ставит webhook на публичный URL.
 
 Ограничения бесплатного Render: сервис засыпает после ~15 минут без входящих
 запросов (первое сообщение будит его за 30–60 секунд), диск не постоянный —

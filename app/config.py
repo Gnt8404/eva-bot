@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout_seconds: float = 30.0
     llm_max_tokens: int = 450
+    # Free-form questions outside Aetherlyn are refused unless the owner opts in.
+    # Keep the strict Aetherlyn-only mode as the safe default.
+    allow_general_topics: bool = False
 
     # Storage and paths
     database_url: str = ""

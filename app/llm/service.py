@@ -17,6 +17,7 @@ from app.kb.store import KnowledgeBase
 from app.llm.client import LLMClient, LLMError
 from app.llm.guard import (
     FRAUD_ANSWER,
+    GENERAL_ERROR_ANSWER,
     INJECTION_ANSWER,
     NO_FACT_ANSWER,
     OFF_TOPIC_ANSWER,
@@ -35,7 +36,12 @@ from app.llm.guard import (
     validate_output,
     wrap_user_data,
 )
-from app.llm.prompts import SYSTEM_PROMPT, build_user_prompt
+from app.llm.prompts import (
+    GENERAL_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_general_prompt,
+    build_user_prompt,
+)
 from app.security.audit import AuditService
 from app.tickets.model import TicketKind
 from app.tickets.service import TicketService
@@ -46,6 +52,7 @@ _EMOJI_RE = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\u2b00-\u2bff\ufe0f\u
 
 class AnswerKind(StrEnum):
     FACT = "fact"
+    GENERAL = "general"
     NO_FACT = "no_fact"
     REFUSAL = "refusal"
     INJECTION = "injection"
@@ -141,6 +148,8 @@ class AssistantService:
             )
         topic = assess_topic(clean)
         if not topic.on_topic:
+            if self.settings.allow_general_topics and self.llm is not None and self.llm.enabled:
+                return await self._general_answer(user_id, clean)
             return AnswerResult(OFF_TOPIC_ANSWER, AnswerKind.REFUSAL, blocked_reason="off_topic")
         donation = self._donation_fact(clean)
         if donation is not None:
@@ -167,6 +176,59 @@ class AssistantService:
             confidence=response.confidence,
             sources=[best.source_label or best.source_url],
         )
+
+    async def _general_answer(self, user_id: int, question: str) -> AnswerResult:
+        """Free-form answer for off-topic questions when the owner opted in."""
+        if self.llm is None or not self.llm.enabled:
+            return AnswerResult(OFF_TOPIC_ANSWER, AnswerKind.REFUSAL, blocked_reason="off_topic")
+        try:
+            raw = await self.llm.complete(
+                system=GENERAL_SYSTEM_PROMPT,
+                user=build_general_prompt(question),
+            )
+        except LLMError:
+            logger.warning("General LLM answer failed")
+            return AnswerResult(
+                GENERAL_ERROR_ANSWER,
+                AnswerKind.ERROR,
+                blocked_reason="llm_error",
+            )
+        text = _strip_emoji(raw).strip()
+        if not text:
+            return AnswerResult(
+                GENERAL_ERROR_ANSWER,
+                AnswerKind.ERROR,
+                blocked_reason="empty_llm_answer",
+            )
+        validation = validate_output(
+            text,
+            allowed_domains=self.settings.allowed_domains,
+            max_chars=self.settings.max_answer_chars,
+            require_source=False,
+        )
+        if not validation.ok and "too_many_lines" in validation.reasons:
+            shortened = "\n".join(text.splitlines()[:6]).strip()
+            validation = validate_output(
+                shortened,
+                allowed_domains=self.settings.allowed_domains,
+                max_chars=self.settings.max_answer_chars,
+                require_source=False,
+            )
+        if not validation.ok:
+            if "secret_leak" in validation.reasons or "internal_prompt_leak" in validation.reasons:
+                await self._violation(user_id, "output_leak", ",".join(validation.reasons))
+                return AnswerResult(
+                    PRIVATE_ANSWER,
+                    AnswerKind.REFUSAL,
+                    blocked_reason="output_leak",
+                )
+            logger.info("General answer rejected: %s", ",".join(validation.reasons))
+            return AnswerResult(
+                GENERAL_ERROR_ANSWER,
+                AnswerKind.ERROR,
+                blocked_reason="output_rejected",
+            )
+        return AnswerResult(validation.text, AnswerKind.GENERAL)
 
     async def _llm_answer(
         self,

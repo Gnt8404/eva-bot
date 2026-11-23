@@ -42,5 +42,7 @@ services:
         value: deepseek-chat
       - key: LLM_API_KEY
         sync: false
+      - key: ALLOW_GENERAL_TOPICS
+        value: "true"
       - key: TZ
         value: Europe/Moscow
