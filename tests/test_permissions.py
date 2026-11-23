@@ -115,3 +115,8 @@ async def test_ticket_decision_is_owner_only(settings: Settings, tickets: Ticket
     )
     assert decided.status == TicketStatus.APPROVED.value
     assert decided.decided_by == settings.owner_id
+
+
+def test_webhook_token_is_sanitized(settings: Settings) -> None:
+    settings.webhook_secret = SecretStr("abc+def/ghi==_jkl-")
+    assert settings.webhook_token == "abcdefghi_jkl-"

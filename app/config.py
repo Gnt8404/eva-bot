@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -224,6 +225,11 @@ class Settings(BaseSettings):
     @property
     def listen_port(self) -> int:
         return self.port or self.webhook_port
+
+    @property
+    def webhook_token(self) -> str:
+        """Telegram allows only A-Z, a-z, 0-9, underscore and hyphen in secret_token."""
+        return re.sub(r"[^A-Za-z0-9_-]", "", self.webhook_secret.get_secret_value())[:256]
 
     def webhook_url(self) -> str:
         return f"{self.webhook_base}{self.webhook_path}"

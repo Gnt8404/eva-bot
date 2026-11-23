@@ -190,7 +190,7 @@ async def run() -> None:
         finally:
             await bot.session.close()
         return
-    if not settings.webhook_secret.get_secret_value().strip():
+    if not settings.webhook_token:
         raise SystemExit("WEBHOOK_SECRET не задан. Webhook без secret_token запрещён.")
 
     async def health(_: web.Request) -> web.Response:
@@ -212,12 +212,12 @@ async def run() -> None:
     SimpleRequestHandler(
         dispatcher=dispatcher,
         bot=bot,
-        secret_token=settings.webhook_secret.get_secret_value(),
+        secret_token=settings.webhook_token,
     ).register(app, path=settings.webhook_path)
     setup_application(app, dispatcher, bot=bot)
     await bot.set_webhook(
         settings.webhook_url(),
-        secret_token=settings.webhook_secret.get_secret_value(),
+        secret_token=settings.webhook_token,
         drop_pending_updates=settings.drop_pending_updates,
         allowed_updates=dispatcher.resolve_used_update_types(),
     )
