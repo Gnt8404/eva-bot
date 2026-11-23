@@ -7,7 +7,9 @@ import logging
 from aiogram import F, Router
 from aiogram.types import Message
 
+from app.bot.group import clean_question, is_addressed, is_group
 from app.bot.keyboards import question_decision
+from app.config import Settings
 from app.llm.service import AnswerKind, AssistantService
 from app.notify import Notifier
 from app.tickets.cards import question_card
@@ -15,6 +17,8 @@ from app.tickets.service import TicketService
 
 logger = logging.getLogger(__name__)
 router = Router(name="ai")
+
+GROUP_GREETING = "Да, я здесь. Напишите вопрос."
 
 RESERVED = {
     "Нужна помощь",
@@ -59,11 +63,23 @@ async def ai_answer(
     assistant: AssistantService,
     notifier: Notifier,
     tickets: TicketService,
+    settings: Settings,
 ) -> None:
-    if message.from_user is None:
+    if message.from_user is None or message.from_user.is_bot:
+        return
+    group = is_group(message)
+    if group and not is_addressed(
+        message,
+        settings.bot_username,
+        reply_all=settings.group_reply_all,
+    ):
         return
     question = (message.text or "").strip()
+    if group:
+        question = clean_question(question, settings.bot_username)
     if not question:
+        if group:
+            await message.answer(GROUP_GREETING, parse_mode=None)
         return
     await _process(message, question, assistant, notifier, tickets)
 
@@ -74,10 +90,22 @@ async def ai_caption(
     assistant: AssistantService,
     notifier: Notifier,
     tickets: TicketService,
+    settings: Settings,
 ) -> None:
-    if message.from_user is None:
+    if message.from_user is None or message.from_user.is_bot:
+        return
+    group = is_group(message)
+    if group and not is_addressed(
+        message,
+        settings.bot_username,
+        reply_all=settings.group_reply_all,
+    ):
         return
     question = (message.caption or "").strip()
+    if group:
+        question = clean_question(question, settings.bot_username)
     if not question:
+        if group:
+            await message.answer(GROUP_GREETING, parse_mode=None)
         return
     await _process(message, question, assistant, notifier, tickets)

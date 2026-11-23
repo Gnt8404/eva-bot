@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     blacklist_ids: str = ""
     team_chat_id: int = 0
     bot_mode: Literal["webhook", "polling"] = "webhook"
+    bot_username: str = "Aetherlynbot"
+    # In groups Eva reacts to a mention/reply/name. Set true to answer every message.
+    group_reply_all: bool = False
     webhook_base_url: str = ""
     webhook_path: str = "/webhook"
     webhook_secret: SecretStr = SecretStr("")

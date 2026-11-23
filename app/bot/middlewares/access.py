@@ -11,6 +11,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
 from aiogram.types import User as TgUser
 
+from app.bot.group import is_group
 from app.bot.keyboards import CB_CAPTCHA, CB_CHECK_SUB, captcha_menu
 from app.config import Settings
 from app.db.models import User
@@ -52,7 +53,10 @@ class AccessMiddleware(BaseMiddleware):
                 elif isinstance(event, CallbackQuery):
                     await event.answer(f"Временный мут: ещё {minutes} мин.", show_alert=True)
                 return None
-        if not user.captcha_ok and tg_user.id != settings.owner_id:
+        # Group members ask Eva directly without a DM captcha. Spam is still
+        # limited by ThrottlingMiddleware; the DM captcha gate stays in place.
+        group_message = isinstance(event, Message) and is_group(event)
+        if not user.captcha_ok and tg_user.id != settings.owner_id and not group_message:
             allowed = False
             if isinstance(event, Message):
                 text = (event.text or "").strip()
