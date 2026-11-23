@@ -1,0 +1,17 @@
+name: Keep Eva awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping Render health endpoint
+        run: curl --fail --silent --show-error --max-time 90 https://eva-bot-v2.onrender.com/health

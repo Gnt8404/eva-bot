@@ -221,6 +221,9 @@ TLS и `/health` остаются на хосте (nginx). Для polling убе
 
 ### Render (бесплатный web-сервис)
 
+Текущий деплой: `https://eva-bot-v2.onrender.com` (Docker, free, Frankfurt),
+бот `@Aetherlynbot`. Blueprint: `eva-bot-v2`, ветка `eva-v2`.
+
 В репозитории есть `render.yaml` для blueprint-деплоя из ветки `eva-v2`:
 Docker, план `free`, healthcheck `/health`, webhook-режим, `PORT` и
 `RENDER_EXTERNAL_URL` подхватываются автоматически. Секреты `BOT_TOKEN`,
@@ -232,6 +235,8 @@ Docker, план `free`, healthcheck `/health`, webhook-режим, `PORT` и
 SQLite, тикеты и донаты могут исчезнуть при передеплое. База знаний
 пересобирается из `data/kb` при старте. Для постоянного диска нужен платный
 план или внешняя PostgreSQL; для «всегда онлайн» без засыпания — маленький VPS.
+Для текущего сервиса `eva-bot-v2` добавлен GitHub Actions keepalive
+`.github/workflows/keepalive.yml`, который пингует `/health` каждые 10 минут.
 
 ### systemd
 
