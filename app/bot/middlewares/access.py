@@ -38,13 +38,18 @@ class AccessMiddleware(BaseMiddleware):
         if tg_user.id in settings.blacklisted_ids:
             return None
         user = await self._upsert(database, tg_user, owner=tg_user.id == settings.owner_id)
+        group_event = (isinstance(event, Message) and is_group(event)) or (
+            isinstance(event, CallbackQuery)
+            and isinstance(event.message, Message)
+            and is_group(event.message)
+        )
         if user.is_banned and tg_user.id != settings.owner_id:
             if isinstance(event, Message):
                 await event.answer("Доступ к боту ограничен.")
             elif isinstance(event, CallbackQuery):
                 await event.answer("Доступ ограничен.", show_alert=True)
             return None
-        if user.muted_until and tg_user.id != settings.owner_id:
+        if user.muted_until and tg_user.id != settings.owner_id and not group_event:
             until = as_utc(user.muted_until)
             if until and until > datetime.now(UTC):
                 minutes = max(1, int((until - datetime.now(UTC)).total_seconds() // 60) + 1)
@@ -53,10 +58,9 @@ class AccessMiddleware(BaseMiddleware):
                 elif isinstance(event, CallbackQuery):
                     await event.answer(f"Временный мут: ещё {minutes} мин.", show_alert=True)
                 return None
-        # Group members ask Eva directly without a DM captcha. Spam is still
-        # limited by ThrottlingMiddleware; the DM captcha gate stays in place.
-        group_message = isinstance(event, Message) and is_group(event)
-        if not user.captcha_ok and tg_user.id != settings.owner_id and not group_message:
+        # Group members ask Eva directly without a DM captcha; group messages
+        # also ignore DM mutes because Eva only answers when addressed there.
+        if not user.captcha_ok and tg_user.id != settings.owner_id and not group_event:
             allowed = False
             if isinstance(event, Message):
                 text = (event.text or "").strip()
