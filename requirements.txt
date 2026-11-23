@@ -1,0 +1,12 @@
+aiogram>=3.22,<4
+aiosqlite>=0.20,<1
+APScheduler>=3.10,<4
+greenlet>=3.1,<4
+httpx>=0.28,<1
+numpy>=1.26,<3
+pydantic>=2.10,<3
+pydantic-settings>=2.7,<3
+PyYAML>=6.0,<7
+SQLAlchemy>=2.0.36,<3
+Telethon>=1.38,<2
+tzdata>=2024.1

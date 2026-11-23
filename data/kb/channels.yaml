@@ -1,0 +1,17 @@
+channels:
+  - key: main
+    label: "⚚ Aetherlyn - 3 сезон ⚚"
+    ref: "https://t.me/+utbI0nXnzAhmMWYy"
+    purpose: "главный канал, анонсы и донат"
+  - key: updates
+    label: "обновления Aetherlyn"
+    ref: ""
+    purpose: "апдейты и изменения"
+  - key: team
+    label: "Офф.команда Aetherlyn"
+    ref: ""
+    purpose: "служебный чат команды"
+  - key: reviews
+    label: "отзывы Aetherlyn"
+    ref: ""
+    purpose: "отзывы игроков"

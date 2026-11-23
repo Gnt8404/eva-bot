@@ -1,0 +1,13 @@
+datapacks:
+  - name: JJThunder To The Max
+    description: "генерация структур и мира"
+  - name: NetherExpanse
+    description: "расширение Нижнего мира"
+  - name: Nullscape
+    description: "авторская генерация Энда"
+  - name: amethyst-nether-sp
+    description: "структуры и особенности Нижнего мира"
+  - name: beyond_the_clouds
+    description: "генерация и структуры в верхних слоях мира"
+  - name: katters_structures
+    description: "дополнительные структуры"

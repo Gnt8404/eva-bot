@@ -1,0 +1,24 @@
+services:
+  eva-bot:
+    build: .
+    image: eva-bot:local
+    container_name: eva-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BOT_MODE: ${BOT_MODE:-webhook}
+      WEBHOOK_HOST: 0.0.0.0
+      WEBHOOK_PORT: 8080
+    ports:
+      # Keep the webhook private; terminate TLS in nginx on the host.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp

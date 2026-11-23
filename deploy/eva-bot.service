@@ -1,0 +1,35 @@
+[Unit]
+Description=Eva AI assistant for Aetherlyn
+Documentation=file:///opt/eva-bot/RUNBOOK.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eva
+Group=eva
+WorkingDirectory=/opt/eva-bot
+EnvironmentFile=/opt/eva-bot/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/eva-bot/.venv/bin/python -m app.main
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+UMask=0077
+
+# Hardening. Copy the project to /opt/eva-bot first and keep runtime data writable.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/eva-bot/data /opt/eva-bot/logs /opt/eva-bot/backups
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=eva-bot
+
+[Install]
+WantedBy=multi-user.target

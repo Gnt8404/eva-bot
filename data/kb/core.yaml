@@ -1,0 +1,183 @@
+documents:
+  - id: core-server
+    title: "Aetherlyn: основные факты"
+    topic: server
+    source_label: "#Aetherlyn #server"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "сервер"]
+    priority: 100
+    whole: true
+    summary: "Aetherlyn — Minecraft Java, Paper 1.21.11 (build 127), порт 25646, сезон 3."
+    content: |
+      Название: Aetherlyn, сезон 3.
+      Платформа: Minecraft Java, Paper 1.21.11 (build 127).
+      Порт: 25646.
+      Режим: выживание, PvE-ванильный с авторскими механиками.
+      Сложность: hard; максимум игроков: 20.
+      view-distance и simulation-distance: 8; spawn-protection: 16.
+      online-mode=false: вход разрешён без Mojang-авторизации, с Bedrock через Geyser/Floodgate.
+      MOTD: «Aetherlyn ванильный пве сервер для ваших лучших проектов».
+      IP-адрес в базе знаний не зафиксирован; его публикует владелец в главном канале.
+  - id: core-season3
+    title: "Сезон 3 и активность"
+    topic: season
+    source_label: "#Aetherlyn #season3"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "сезон", "вайп"]
+    priority: 90
+    whole: true
+    summary: "Сезон 3 стартовал заново: души на старте убраны, все измерения открыты."
+    content: |
+      Сезон 3 стартовал заново.
+      Души на старте убраны, чтобы нельзя было закупиться и сразу идти на дракона.
+      Все измерения открыты.
+      Новые механики, события и розыгрыши выходят по активности игроков.
+      Ориентир стабильного онлайна — 5–7 человек.
+      Периодически проводится чистка неактивных игроков.
+      Активность подтверждается скриншотом команды /playtime под постом о чистке.
+  - id: core-team
+    title: "Команда Aetherlyn"
+    topic: team
+    source_label: "#Aetherlyn #team"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "команда"]
+    priority: 90
+    whole: true
+    summary: "Владелец и главный админ — «беляш» (@belyak345)."
+    content: |
+      Владелец и главный админ — «беляш» (@belyak345).
+      Он же автор анонсов сервера.
+      Состав остальной команды в базе знаний не зафиксирован.
+  - id: core-rules
+    title: "Правила сервера: что зафиксировано"
+    topic: rules
+    source_label: "#Aetherlyn #rules"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "правила"]
+    priority: 95
+    whole: true
+    summary: "Aetherlyn — PvE-сервер; гриферство фиксируется CoreProtect; PvP только по переключателю."
+    content: |
+      Aetherlyn — выживание/PvE-сервер с авторскими механиками.
+      Гриферство и изменения блоков фиксируются CoreProtect-CE; по обращению администрация может откатить ущерб.
+      PvP включается и выключается плагином pvpoption; насильственный PvP не является режимом сервера.
+      Для входа используется авторизация SimpleLogin: /login и /register.
+      Полный свод правил публикуется владельцем в главном канале; в базе знаний зафиксированы только перечисленные факты.
+  - id: core-connection
+    title: "Как подключиться и зайти с Bedrock"
+    topic: connection
+    source_label: "#Aetherlyn #connect"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "подключение", "bedrock"]
+    priority: 95
+    whole: true
+    summary: "Порт 25646, Java Paper 1.21.11; Bedrock через Geyser/Floodgate."
+    content: |
+      Подключение: Minecraft Java, адрес сервера публикует владелец в главном канале, порт 25646.
+      Версия сервера: Paper 1.21.11 (build 127).
+      Клиенты других версий поддерживаются через ViaVersion и ViaBackwards.
+      Bedrock (телефон/консоль) заходит через Geyser и Floodgate; скины Bedrock восстанавливает BedrockSkinRestorer.
+      online-mode=false, поэтому после входа нужна авторизация SimpleLogin: /register или /login.
+      IP-адрес в базе знаний не зафиксирован; не выдумывайте его.
+  - id: core-plugins-overview
+    title: "Плагины Aetherlyn"
+    topic: plugins
+    source_label: "#Aetherlyn #plugins"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "плагины"]
+    priority: 80
+    whole: true
+    summary: "На сервере 26 строк плагинов, включая Sorrow, Geyser/Floodgate, CoreProtect-CE и GrimAC."
+    content: |
+      Полный список плагинов доступен в меню «Плагины и датапаки» и в файле plugins.yaml базы знаний.
+      Ключевые плагины: AdvancedTeleport, AetherlynTab, AxGraves, BedrockSkinRestorer, Chunky,
+      CoreProtect-CE, EssentialsX, Geyser + Floodgate, InventoryRollbackPlus, LogCleaner,
+      LuckPerms, MSP-BattlePass, PlaceholderAPI, ProtocolLib, RedstoneReboot, SimpleLogin,
+      SkinsRestorer, Sorrow, ViaVersion + ViaBackwards, Wedding, GrimAC, pvpoption,
+      voicechat, WorldEdit, WorldGuard, zMItemsBuilder.
+      Плагины синхронизируются с сервером через API панели, когда панель доступна.
+  - id: core-datapacks
+    title: "Датапаки мира Aetherlyn"
+    topic: plugins
+    source_label: "#Aetherlyn #datapacks"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "датапаки"]
+    priority: 80
+    whole: true
+    summary: "Установлены JJThunder To The Max, NetherExpanse, Nullscape и другие датапаки."
+    content: |
+      Датапаки мира: JJThunder To The Max, NetherExpanse, Nullscape, amethyst-nether-sp,
+      beyond_the_clouds, katters_structures.
+      Полный список доступен в меню «Плагины и датапаки».
+  - id: core-sorrow
+    title: "Sorrow: авторский мир-лабиринт"
+    topic: sorrow
+    source_label: "#Aetherlyn #sorrow"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "Sorrow", "механики"]
+    priority: 90
+    whole: true
+    summary: "Sorrow — мир-лабиринт с записками, квестами, промокодами, мимиком, рулеткой и собором."
+    content: |
+      Sorrow (плагин Sorrow 1.48.2) — авторский мир-лабиринт.
+      В нём есть записки, квесты, промокоды, мимик, рулетка, душевный магазин и катакомбы со структурами.
+      Души на старте сезона 3 убраны; душевный магазин относится к механике Sorrow.
+      Как именно получить конкретный предмет или пройти конкретную структуру, в базе знаний не описано.
+  - id: core-activity
+    title: "Чистка неактивных и подтверждение активности"
+    topic: activity
+    source_label: "#Aetherlyn #activity"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "чистка", "playtime"]
+    priority: 85
+    whole: true
+    summary: "Активность подтверждается скриншотом /playtime под постом о чистке."
+    content: |
+      Чистка неактивных игроков проводится периодически.
+      Активность подтверждается скриншотом команды /playtime под постом о чистке.
+      Конкретных дат следующей чистки в базе знаний нет.
+  - id: core-donation
+    title: "Донат: печати и игровой пасс"
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "донат", "печати"]
+    priority: 95
+    whole: true
+    summary: "Печати покупаются пакетами; игровой пасс стоит 200 ₽. Выдача только после подтверждения владельца."
+    content: |
+      В донате доступны пакеты печатей (от 5 до 1000) и игровой пасс.
+      Игровой пасс: 200 ₽ / 250 звёзд / 2.20 $ / 60 000 сум.
+      Автоматического подтверждения оплаты нет: владелец проверяет чек вручную.
+      После подтверждения бот выдаёт промокод и передаёт команду выдачи на сервер.
+      Полная таблица цен и реквизиты — в разделе «Донаты».
+  - id: core-channels
+    title: "Официальные каналы и чаты Telegram"
+    topic: channels
+    source_label: "#Aetherlyn #channels"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "каналы"]
+    priority: 85
+    whole: true
+    summary: "Главный канал Aetherlyn: https://t.me/+utbI0nXnzAhmMWYy."
+    content: |
+      Главный канал: «⚚ Aetherlyn - 3 сезон ⚚» — https://t.me/+utbI0nXnzAhmMWYy (анонсы и донат).
+      «обновления Aetherlyn» — апдейты и изменения.
+      «Офф.команда Aetherlyn» — служебный чат команды.
+      «отзывы Aetherlyn» — отзывы игроков.
+  - id: core-commands
+    title: "Основные команды сервера"
+    topic: commands
+    source_label: "#Aetherlyn #commands"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    tags: ["#Aetherlyn", "команды", "плагины"]
+    priority: 70
+    whole: true
+    summary: "Доступны телепорты, авторизация, браки, голосовой чат и другие команды плагинов."
+    content: |
+      AdvancedTeleport: /tpa, /spawn, /home, /warp.
+      SimpleLogin: /login и /register.
+      Wedding оформляет браки между игроками; voicechat отвечает за голосовой чат.
+      PvP переключается плагином pvpoption.
+      Экономика и базовые команды — EssentialsX; боевой пропуск — MSP-BattlePass.
+      Полный перечень команд конкретных плагинов в базе знаний не зафиксирован.

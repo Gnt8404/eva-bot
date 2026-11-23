@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: eva-bot-v2
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: BOT_MODE
+        value: webhook
+      - key: WEBHOOK_HOST
+        value: 0.0.0.0
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_ID
+        value: "6343943842"
+      - key: TEAM_CHAT_ID
+        value: "0"
+      - key: PANEL_BASE
+        value: https://mgr.hosting-minecraft.pro/api/client
+      - key: PANEL_KEY
+        sync: false
+      - key: SERVER_ID
+        value: acd21ae2-4cf0-49e2-89cc-d8f908f66505a
+      - key: SERVER_HOST
+        value: 107.161.154.218
+      - key: SERVER_PORT
+        value: "25646"
+      - key: RCON_HOST
+        value: 107.161.154.218
+      - key: RCON_PORT
+        value: "25662"
+      - key: RCON_PASSWORD
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://api.deepseek.com/v1
+      - key: LLM_MODEL
+        value: deepseek-chat
+      - key: LLM_API_KEY
+        sync: false
+      - key: TZ
+        value: Europe/Moscow

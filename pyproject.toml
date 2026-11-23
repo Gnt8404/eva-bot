@@ -1,0 +1,46 @@
+[project]
+name = "eva-aetherlyn-bot"
+version = "1.0.0"
+description = "ИИ-помощник «Ева» для Minecraft-сервера Aetherlyn"
+requires-python = ">=3.12"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [".venv", "data", ".tmp", "pip-*"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
+ignore = [
+    "B008",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "B011"]
+"app/llm/guard.py" = ["RUF001"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+warn_redundant_casts = true
+warn_unused_configs = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["telethon.*", "apscheduler.*"]
+ignore_missing_imports = true

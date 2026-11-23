@@ -1,0 +1,249 @@
+entries:
+  - id: what-is-aetherlyn
+    question: "Что такое Aetherlyn?"
+    answer: "Aetherlyn — Minecraft Java-сервер на Paper 1.21.11, сезон 3. Режим: выживание, PvE-ванильный с авторскими механиками, сложность hard, до 20 игроков."
+    keywords: ["что за сервер", "опиши сервер", "Aetherlyn"]
+    topic: server
+    source_label: "#Aetherlyn #server"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 100
+  - id: ip-and-port
+    question: "Какой IP и порт у сервера?"
+    answer: "IP-адрес в базе знаний не зафиксирован: его публикует владелец в главном канале. Порт сервера — 25646. Не подставляйте другой адрес."
+    keywords: ["ip", "айпи", "адрес сервера", "как зайти на сервер", "порт", "подключиться"]
+    topic: connection
+    source_label: "#Aetherlyn #connect"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 100
+  - id: version
+    question: "Какая версия сервера и клиента?"
+    answer: "Сервер работает на Paper 1.21.11 (build 127). Клиенты других версий поддерживаются через ViaVersion и ViaBackwards."
+    keywords: ["версия", "paper", "какой клиент", "1.21.11", "viaversion"]
+    topic: connection
+    source_label: "#Aetherlyn #server"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: bedrock
+    question: "Можно ли зайти с телефона или Bedrock?"
+    answer: "Да. Вход с Bedrock (телефон, консоль) работает через Geyser и Floodgate; скины Bedrock восстанавливает BedrockSkinRestorer. После входа нужна авторизация SimpleLogin."
+    keywords: ["bedrock", "телефон", "консоль", "geyser", "floodgate", "с телефона", "играть", "мобильный"]
+    topic: connection
+    source_label: "#Aetherlyn #connect"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: login
+    question: "Как зарегистрироваться и войти?"
+    answer: "Сервер работает с online-mode=false, поэтому после подключения выполните /register для нового аккаунта или /login для существующего. Пароль никому не передавайте."
+    keywords: ["логин", "register", "register", "авторизация", "пароль", "не могу зайти", "вход"]
+    topic: connection
+    source_label: "#Aetherlyn #connect"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: season-three
+    question: "Что изменилось в сезоне 3?"
+    answer: "Сезон 3 стартовал заново. Души на старте убраны, чтобы нельзя было закупиться и сразу идти на дракона. Все измерения открыты."
+    keywords: ["сезон 3", "третий сезон", "новый сезон", "души", "дракон", "измерения"]
+    topic: season
+    source_label: "#Aetherlyn #season3"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: wipe-dates
+    question: "Когда будет вайп?"
+    answer: "Дата следующего вайпа в базе знаний не объявлена. Анонс выходит в главном канале Aetherlyn; не ориентируйтесь на слухи."
+    keywords: ["вайп", "wipe", "сброс", "когда вайп", "дата вайпа"]
+    topic: season
+    source_label: "#Aetherlyn #season3"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 90
+  - id: owner
+    question: "Кто владелец сервера?"
+    answer: "Владелец и главный админ — «беляш» (@belyak345). Он публикует анонсы. Остальной состав команды в базе не раскрывается."
+    keywords: ["владелец", "админ", "хозяин", "беляш", "belyak345", "кто главный"]
+    topic: team
+    source_label: "#Aetherlyn #team"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: rules
+    question: "Какие правила на сервере?"
+    answer: "Aetherlyn — PvE-сервер: гриферство фиксируется CoreProtect и может быть откатано. PvP работает только через переключатель pvpoption. Для входа нужна авторизация SimpleLogin."
+    keywords: ["правила", "что запрещено", "гриферство", "pvp", "можно ли", "бан"]
+    topic: rules
+    source_label: "#Aetherlyn #rules"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: grief
+    question: "Меня загриферили, что делать?"
+    answer: "Сообщите ник нарушителя, время и координаты, приложите скриншот. Изменения блоков фиксирует CoreProtect, администрация сможет проверить и откатить ущерб."
+    keywords: ["загриферили", "грифер", "сломали дом", "украли", "откат", "coreprotect", "жалоба"]
+    topic: rules
+    source_label: "#Aetherlyn #rules"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 90
+  - id: lost-items
+    question: "Потерял вещи после смерти, где их найти?"
+    answer: "После смерти лут сохраняется в могиле: его ставит AxGraves. Вернитесь к месту смерти и заберите содержимое. Если инвентарь пропал из-за ошибки, создайте обращение с временем и ником."
+    keywords: ["потерял вещи", "смерть", "могила", "лут", "axgraves", "инвентарь", "пропали вещи"]
+    topic: help
+    source_label: "#Aetherlyn #plugins"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 90
+  - id: lag
+    question: "Сервер лагает, что делать?"
+    answer: "Зафиксируйте время, координаты и скриншот F3, затем передайте данные администратору через обращение. Не устанавливайте сторонние моды для обхода лагов."
+    keywords: ["лаги", "лагает", "тормозит", "tps", "mspt", "производительность", "фризы"]
+    topic: help
+    source_label: "#Aetherlyn #server"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 85
+  - id: sorrow
+    question: "Что такое Sorrow?"
+    answer: "Sorrow — авторский мир-лабиринт: записки, квесты, промокоды, мимик, рулетка, душевный магазин и катакомбы со структурами. Конкретные прохождения в базе не описаны."
+    keywords: ["sorrow", "сорроу", "лабиринт", "мимик", "рулетка", "душевный магазин", "катакомбы", "записки", "как работает"]
+    topic: sorrow
+    source_label: "#Aetherlyn #sorrow"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: sorrow-problem
+    question: "Проблема с Sorrow, что делать?"
+    answer: "Опишите место, механику и время проблемы, приложите скриншот. Передам обращение администратору; точных инструкций по прохождению в базе нет."
+    keywords: ["проблема sorrow", "сломался sorrow", "не работает sorrow", "квест", "застрял", "мимик"]
+    topic: sorrow
+    source_label: "#Aetherlyn #sorrow"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 85
+  - id: donate-general
+    question: "Что можно купить в донате?"
+    answer: "В донате доступны пакеты печатей от 5 до 1000 и игровой пасс. Печати нужны для закупки брони, инструментов и оружия; после покупки выдаётся промокод."
+    keywords: ["донат", "печати", "что купить", "поддержать сервер", "игровой пасс", "пасс"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: donate-prices
+    question: "Сколько стоят печати?"
+    answer: "Пакеты печатей: от 18 ₽ за 5 штук до 1 240 ₽ за 1000. Полная таблица с ценами в рублях, звёздах, долларах и сумах — в разделе «Донаты»."
+    keywords: ["сколько стоят печати", "цена печатей", "стоимость", "прайс", "18 рублей", "пакеты"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: game-pass-price
+    question: "Сколько стоит игровой пасс?"
+    answer: "Игровой пасс стоит 200 ₽, 250 звёзд, 2.20 $ или 60 000 сум. Оплата подтверждается владельцем вручную."
+    keywords: ["сколько стоит пасс", "игровой пасс цена", "200 рублей", "боевой пропуск"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: payment-methods
+    question: "Как оплатить донат?"
+    answer: "Нажмите «Донаты» → «Показать реквизиты» и выберите валюту: рубли, доллары или сумы. В сообщении будут валюта, сумма и последние 4 цифры карты. Полный номер в чат и тикеты не пишется."
+    keywords: ["как оплатить", "оплата", "реквизиты", "карта", "перевод", "куда платить", "валюта"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 100
+  - id: donate-flow
+    question: "Как проходит покупка печатей?"
+    answer: "Выберите пакет, оплатите по реквизитам и отправьте заявку: ник, Telegram, скриншот чека и количество печатей. Владелец проверит чек; только после подтверждения бот выдаст промокод."
+    keywords: ["как купить", "заявка", "чек", "скриншот оплаты", "подтверждение", "промокод", "выдача"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 100
+  - id: promo
+    question: "Как получить промокод?"
+    answer: "После подтверждения оплаты бот создаёт промокод AETHER-<печати>-<код> и передаёт команду выдачи на сервер. Промокод приходит покупателю в Telegram; передавать его третьим лицам не нужно."
+    keywords: ["промокод", "promo", "код", "как получить", "получить", "как активировать", "выдача печатей"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 90
+  - id: donate-refund
+    question: "Можно ли вернуть деньги за донат?"
+    answer: "Условия возврата в базе знаний не зафиксированы. Создайте обращение к администратору и приложите чек; решение принимает владелец."
+    keywords: ["возврат", "вернуть деньги", "refund", "отмена покупки", "не пришли печати"]
+    topic: donate
+    source_label: "#Aetherlyn #donate"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 80
+  - id: application
+    question: "Как попасть в команду сервера?"
+    answer: "Откройте «Анкета» в меню и заполните поля: возраст, игровой ник, опыт, часы в неделю, часовой пояс, микрофон и ссылку на портфолио. Владелец рассмотрит анкету."
+    keywords: ["набор", "анкета", "в команду", "стать админом", "помощник", "заявка в команду"]
+    topic: team
+    source_label: "#Aetherlyn #team"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 95
+  - id: online
+    question: "Сколько сейчас игроков онлайн?"
+    answer: "Живой онлайн отображается в меню «О сервере» на момент проверки. Если панель недоступна, бот не выдумывает число."
+    keywords: ["онлайн", "сколько игроков", "играет", "статус", "сервер работает"]
+    topic: status
+    source_label: "#Aetherlyn #status"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 80
+  - id: cleanup
+    question: "Как проходит чистка неактивных игроков?"
+    answer: "Чистка проводится периодически. Активность подтверждается скриншотом команды /playtime под постом о чистке; конкретная дата следующей чистки в базе не объявлена."
+    keywords: ["чистка", "неактивные", "удаляют", "playtime", "активность", "кик"]
+    topic: activity
+    source_label: "#Aetherlyn #activity"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 85
+  - id: plugins
+    question: "Какие плагины стоят на сервере?"
+    answer: "Список открывается в меню «Плагины и датапаки»: там 26 строк плагинов, включая Sorrow, Geyser/Floodgate, CoreProtect-CE, GrimAC и LuckPerms. Там же датапаки."
+    keywords: ["плагины", "моды", "plugins", "что установлено", "датапаки"]
+    topic: plugins
+    source_label: "#Aetherlyn #plugins"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 85
+  - id: datapacks
+    question: "Какие датапаки установлены?"
+    answer: "Установлены JJThunder To The Max, NetherExpanse, Nullscape, amethyst-nether-sp, beyond_the_clouds и katters_structures. Полный список — в меню «Плагины и датапаки»."
+    keywords: ["датапаки", "datapacks", "генерация", "структуры", "мир"]
+    topic: plugins
+    source_label: "#Aetherlyn #datapacks"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 85
+  - id: commands
+    question: "Какие команды есть на сервере?"
+    answer: "Основные: /tpa, /spawn, /home, /warp, /login, /register. PvP переключается pvpoption; экономика и киты — EssentialsX; браки — Wedding; голосовой чат — voicechat."
+    keywords: ["команды", "commands", "tpa", "spawn", "home", "warp", "как телепортироваться"]
+    topic: commands
+    source_label: "#Aetherlyn #commands"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 80
+  - id: pvp
+    question: "Как включить или выключить PvP?"
+    answer: "PvP управляется плагином pvpoption 1.5.3: есть переключатель PvP. Насильственный PvP не является режимом сервера; уточняйте состояние переключателя в игре."
+    keywords: ["pvp", "пвп", "переключатель", "включить pvp", "выключить pvp"]
+    topic: commands
+    source_label: "#Aetherlyn #plugins"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 80
+  - id: voice
+    question: "Есть ли голосовой чат?"
+    answer: "Да, на сервере установлен voicechat 2.6.23. Для голосового чата нужен совместимый клиентский мод; настройки мода в базе не описаны."
+    keywords: ["голосовой чат", "voicechat", "микрофон", "голос", "voice"]
+    topic: plugins
+    source_label: "#Aetherlyn #plugins"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 75
+  - id: wedding
+    question: "Можно ли пожениться в игре?"
+    answer: "Да, на сервере установлен плагин Wedding 1.4.1 для браков между игроками. Команды и условия церемонии в базе не зафиксированы."
+    keywords: ["брак", "свадьба", "пожениться", "жениться", "wedding", "жена", "муж"]
+    topic: plugins
+    source_label: "#Aetherlyn #plugins"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 75
+  - id: channels
+    question: "Где официальные каналы Aetherlyn?"
+    answer: "Главный канал: https://t.me/+utbI0nXnzAhmMWYy. Также есть «обновления Aetherlyn», «Офф.команда Aetherlyn» и «отзывы Aetherlyn»."
+    keywords: ["канал", "telegram", "телеграм", "новости", "отзывы", "официальный"]
+    topic: channels
+    source_label: "#Aetherlyn #channels"
+    source_url: "https://t.me/+utbI0nXnzAhmMWYy"
+    priority: 90
