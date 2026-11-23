@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -33,6 +34,7 @@ async def _send_donation(message: Message, donations: DonationService) -> None:
     )
 
 
+@router.message(Command("donate"))
 @router.message(F.text == BTN_DONATE)
 async def donate_entry(message: Message, donations: DonationService) -> None:
     await _send_donation(message, donations)

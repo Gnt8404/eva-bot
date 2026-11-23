@@ -6,6 +6,7 @@ import math
 from typing import Any
 
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -46,6 +47,7 @@ def _server_text(settings: Settings, status_text: str, channels: list[dict[str, 
     return "\n".join(lines)
 
 
+@router.message(Command("server"))
 @router.message(F.text == BTN_SERVER)
 async def server_info(
     message: Message,
@@ -83,6 +85,7 @@ async def _send_plugins(target: Message, kb: KnowledgeBase, page: int) -> None:
     await target.answer(text, reply_markup=plugins_menu(page, pages))
 
 
+@router.message(Command("plugins"))
 @router.message(F.text == BTN_PLUGINS)
 async def plugins_entry(message: Message, kb: KnowledgeBase) -> None:
     await _send_plugins(message, kb, 0)

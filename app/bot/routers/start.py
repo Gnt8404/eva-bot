@@ -9,6 +9,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from app.bot.group import is_group
 from app.bot.keyboards import (
     CB_CAPTCHA,
     CB_CHECK_SUB,
@@ -60,6 +61,13 @@ async def cmd_start(
     database: Database,
 ) -> None:
     await state.clear()
+    if is_group(message):
+        if message.from_user is not None:
+            await message.answer(
+                "Меню Aetherlyn: выберите раздел кнопками ниже или спросите меня по имени «Ева».",
+                reply_markup=main_menu(settings.is_owner(message.from_user.id)),
+            )
+        return
     if not db_user.captcha_ok and message.from_user and message.from_user.id != settings.owner_id:
         await message.answer(
             "Подтвердите, что вы человек, чтобы пользоваться ботом.",
@@ -146,10 +154,14 @@ async def show_menu(event: Message | CallbackQuery, settings: Settings, state: F
 
 
 @router.message(Command("help"))
-async def cmd_help(message: Message) -> None:
+async def cmd_help(message: Message, settings: Settings) -> None:
+    user_id = message.from_user.id if message.from_user else 0
     await message.answer(
-        "Команды: /start — меню, /menu — главное меню, /cancel — отменить действие.\n"
-        "Или выберите раздел кнопками ниже."
+        "Команды: /start — меню, /menu — главное меню, /server — о сервере, "
+        "/plugins — плагины, /donate — донаты, /report — жалоба, /apply — анкета, "
+        "/cancel — отменить действие.\n"
+        "В группе можно писать «Ева» перед вопросом.",
+        reply_markup=main_menu(settings.is_owner(user_id)),
     )
 
 

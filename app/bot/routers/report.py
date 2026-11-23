@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -39,6 +40,7 @@ async def _begin(message: Message, state: FSMContext) -> None:
     )
 
 
+@router.message(Command("report"))
 @router.message(F.text == BTN_REPORT)
 async def report_entry(message: Message, state: FSMContext) -> None:
     await _begin(message, state)

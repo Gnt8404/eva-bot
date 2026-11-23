@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -38,6 +39,7 @@ async def _begin(message: Message, state: FSMContext) -> None:
     await message.answer("Шаг 1/7. Сколько вам полных лет?", reply_markup=cancel_menu())
 
 
+@router.message(Command("apply"))
 @router.message(F.text == BTN_APPLY)
 async def apply_entry(message: Message, state: FSMContext) -> None:
     await _begin(message, state)
