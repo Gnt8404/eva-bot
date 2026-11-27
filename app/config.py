@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     # Server integrations
     panel_base: str = "https://mgr.hosting-minecraft.pro/api/client"
     panel_key: SecretStr = SecretStr("")
-    server_id: str = "acd21ae2-4cf0-49e2-89cc-d8f908f66505a"
+    server_id: str = "acd21ae2-4cf0-49e2-89cc-d8f90866505a"
     rcon_host: str = "127.0.0.1"
     rcon_port: int = 25575
     rcon_password: SecretStr = SecretStr("")

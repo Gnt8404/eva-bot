@@ -31,7 +31,7 @@ services:
       - key: PANEL_KEY
         sync: false
       - key: SERVER_ID
-        value: acd21ae2-4cf0-49e2-89cc-d8f908f66505a
+        value: acd21ae2-4cf0-49e2-89cc-d8f90866505a
       - key: SERVER_HOST
         value: 107.161.154.218
       - key: SERVER_PORT

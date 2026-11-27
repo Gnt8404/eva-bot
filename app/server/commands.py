@@ -12,6 +12,7 @@ from app.security.access import PermissionDenied, require_owner
 from app.security.audit import AuditService
 from app.security.redaction import redact_text
 from app.server.mcrcon import RconClient, RconError
+from app.server.pterodactyl import PanelError, PterodactylClient
 
 MAX_COMMAND_LENGTH = 300
 MAX_OUTPUT_LENGTH = 1500
@@ -145,9 +146,11 @@ class ConsoleService:
         audit: AuditService | None = None,
         *,
         rcon: RconClient | None = None,
+        panel: PterodactylClient | None = None,
     ) -> None:
         self.settings = settings
         self._audit = audit
+        self.panel = panel
         self.rcon = rcon or RconClient(
             settings.rcon_host,
             settings.rcon_port,
@@ -218,26 +221,54 @@ class ConsoleService:
         return await self._execute(actor_id, command, audit=False)
 
     async def _execute(self, actor_id: int, command: str, *, audit: bool = True) -> str:
-        if not self.settings.rcon_ready:
-            await self._record(actor_id, "console_execute", command[:120], "unavailable")
-            raise ConsoleError("RCON не настроен")
-        try:
-            raw_output = await self.rcon.command(command)
-        except RconError as exc:
-            await self._record(actor_id, "console_execute", command[:120], "error")
-            raise ConsoleError(str(exc)) from exc
-        output = mask_output(raw_output)
-        if audit:
+        rcon_error: RconError | None = None
+        if self.settings.rcon_ready:
+            try:
+                raw_output = await self.rcon.command(command)
+            except RconError as exc:
+                rcon_error = exc
+            else:
+                output = mask_output(raw_output)
+                if audit:
+                    await self._record(
+                        actor_id,
+                        "console_execute",
+                        command[:120],
+                        "ok",
+                        details=output[:500],
+                    )
+                else:
+                    await self._record(actor_id, "console_executed", command[:120], "ok")
+                return output
+
+        # Manual owner console only: fall back to the panel command API when
+        # RCON is blocked. Automated donation fulfilment stays RCON-only because
+        # its output must be verified.
+        if audit and self.panel is not None and self.settings.panel_ready:
+            try:
+                await self.panel.send_command(command)
+            except PanelError as exc:
+                await self._record(actor_id, "console_execute", command[:120], "error")
+                raise ConsoleError(
+                    f"RCON недоступен ({rcon_error or 'не настроен'}); панель: {exc}"
+                ) from exc
+            output = (
+                "Команда отправлена через панель Pterodactyl. "
+                "Ответ смотрите в консоли сервера (RCON недоступен)."
+            )
             await self._record(
                 actor_id,
-                "console_execute",
+                "console_execute_panel",
                 command[:120],
                 "ok",
-                details=output[:500],
+                details=output,
             )
-        else:
-            await self._record(actor_id, "console_executed", command[:120], "ok")
-        return output
+            return output
+
+        await self._record(actor_id, "console_execute", command[:120], "error")
+        if rcon_error is not None:
+            raise ConsoleError(str(rcon_error)) from rcon_error
+        raise ConsoleError("RCON не настроен")
 
     def _purge(self) -> None:
         now = time.monotonic()

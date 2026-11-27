@@ -111,7 +111,7 @@ async def run() -> None:
     tickets = TicketService(database, settings, audit)
     notifications = Notifier(bot, settings)
     donations = DonationService(database, settings, tickets, audit)
-    console = ConsoleService(settings, audit, rcon=rcon)
+    console = ConsoleService(settings, audit, rcon=rcon, panel=panel)
     status = StatusService(settings, panel, rcon)
     learning = LearningService(database, kb)
     llm = LLMClient(settings) if settings.llm_ready else None

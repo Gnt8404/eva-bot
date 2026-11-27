@@ -24,6 +24,7 @@ from app.server.commands import (
     ConsoleService,
     validate_command,
 )
+from app.server.mcrcon import RconError
 from app.tickets.model import TicketKind, TicketStatus
 from app.tickets.service import TicketService
 
@@ -35,6 +36,19 @@ class FakeRcon:
     async def command(self, command: str) -> str:
         self.calls.append(command)
         return "There are 3 of a max of 20 players online"
+
+
+class FailingRcon:
+    async def command(self, command: str) -> str:
+        raise RconError("RCON connection refused")
+
+
+class FakePanel:
+    def __init__(self) -> None:
+        self.commands: list[str] = []
+
+    async def send_command(self, command: str) -> None:
+        self.commands.append(command)
 
 
 def test_owner_only_permissions(settings: Settings) -> None:
@@ -92,6 +106,17 @@ def test_console_expired_token_is_rejected(settings: Settings) -> None:
     pending.expires_at = 0
     with pytest.raises(ConfirmationExpired):
         asyncio.run(service.confirm(settings.owner_id, pending.token))
+
+
+def test_console_falls_back_to_panel_when_rcon_is_down(settings: Settings) -> None:
+    settings.rcon_password = SecretStr("test-rcon")
+    settings.panel_key = SecretStr("test-panel")
+    panel = FakePanel()
+    service = ConsoleService(settings, rcon=FailingRcon(), panel=panel)  # type: ignore[arg-type]
+    pending = asyncio.run(service.prepare(settings.owner_id, "list"))
+    output = asyncio.run(service.confirm(settings.owner_id, pending.token))
+    assert "через панель" in output
+    assert panel.commands == ["list"]
 
 
 async def test_ticket_decision_is_owner_only(settings: Settings, tickets: TicketService) -> None:

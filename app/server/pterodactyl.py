@@ -184,6 +184,34 @@ class PterodactylClient:
         tail = content.splitlines()[-max(1, lines) :]
         return "\n".join(tail)
 
+    async def send_command(self, command: str) -> None:
+        """Send an allowlisted command through the panel websocket API.
+
+        Pterodactyl does not return command output; callers must read the
+        console/log tail separately. This is used only as an owner-authorized
+        fallback when the RCON TCP port is unavailable.
+        """
+        if not self.ready:
+            raise PanelUnavailable("Panel credentials are not configured")
+        if not command.strip() or len(command) > 300:
+            raise PanelForbidden("Invalid command")
+        try:
+            response = await self._client.post(
+                self._server_url("/command"),
+                json={"command": command},
+            )
+        except httpx.HTTPError as exc:
+            raise PanelUnavailable("Panel is unreachable") from exc
+        if response.status_code == 401:
+            raise PanelUnavailable("Panel rejected the API key")
+        if response.status_code == 403:
+            raise PanelForbidden("Panel denied the command")
+        if response.status_code == 409:
+            raise PanelUnavailable("Server is not running")
+        if response.status_code >= 400:
+            raise PanelForbidden(f"Panel returned {response.status_code}")
+        self._cache.clear()
+
     async def close(self) -> None:
         await self._client.aclose()
         self._cache.clear()
