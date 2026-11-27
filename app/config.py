@@ -130,6 +130,14 @@ class Settings(BaseSettings):
     payment_card_usd: str = "4231 2000 1844 1583"
     payment_card_rub: str = "2202 2083 6871 6909"
 
+    @field_validator("server_id", mode="after")
+    @classmethod
+    def _fix_known_server_id_typo(cls, value: str) -> str:
+        # The owner originally supplied the UUID without this extra "f".
+        if value == "acd21ae2-4cf0-49e2-89cc-d8f908f66505a":
+            return "acd21ae2-4cf0-49e2-89cc-d8f90866505a"
+        return value
+
     @field_validator("webhook_path")
     @classmethod
     def _validate_webhook_path(cls, value: str) -> str:

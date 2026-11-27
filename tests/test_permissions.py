@@ -29,6 +29,12 @@ from app.tickets.model import TicketKind, TicketStatus
 from app.tickets.service import TicketService
 
 
+def test_known_server_id_typo_is_corrected() -> None:
+    typo = "acd21ae2-4cf0-49e2-89cc-d8f908f66505a"
+    correct = "acd21ae2-4cf0-49e2-89cc-d8f90866505a"
+    assert Settings(bot_token="x", server_id=typo).server_id == correct
+
+
 class FakeRcon:
     def __init__(self) -> None:
         self.calls: list[str] = []
