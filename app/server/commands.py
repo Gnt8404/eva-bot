@@ -241,27 +241,37 @@ class ConsoleService:
                     await self._record(actor_id, "console_executed", command[:120], "ok")
                 return output
 
-        # Manual owner console only: fall back to the panel command API when
-        # RCON is blocked. Automated donation fulfilment stays RCON-only because
-        # its output must be verified.
-        if audit and self.panel is not None and self.settings.panel_ready:
+        # Manual owner console and owner-confirmed automation: fall back to the
+        # Pterodactyl console websocket when the hosting firewall blocks RCON.
+        if self.panel is not None and self.settings.panel_ready:
             try:
-                await self.panel.send_command(command)
-            except PanelError as exc:
-                await self._record(actor_id, "console_execute", command[:120], "error")
-                raise ConsoleError(
-                    f"RCON недоступен ({rcon_error or 'не настроен'}); панель: {exc}"
-                ) from exc
-            output = (
-                "Команда отправлена через панель Pterodactyl. "
-                "Ответ смотрите в консоли сервера (RCON недоступен)."
-            )
+                output = await self.panel.console_command(command)
+            except PanelError as first_exc:
+                try:
+                    await self.panel.send_command(command)
+                except PanelError as second_exc:
+                    await self._record(actor_id, "console_execute", command[:120], "error")
+                    raise ConsoleError(
+                        f"RCON недоступен ({rcon_error or 'не настроен'}); "
+                        f"консоль панели: {second_exc}"
+                    ) from second_exc
+                output = (
+                    "Команда отправлена через панель Pterodactyl; консоль панели не вернула вывод."
+                )
+                await self._record(
+                    actor_id,
+                    "console_execute_panel",
+                    command[:120],
+                    "sent",
+                    details=str(first_exc)[:300],
+                )
+                return output
             await self._record(
                 actor_id,
                 "console_execute_panel",
                 command[:120],
                 "ok",
-                details=output,
+                details=output[:500],
             )
             return output
 

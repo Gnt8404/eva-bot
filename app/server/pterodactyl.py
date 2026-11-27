@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import re
 import time
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
+from urllib.parse import urlparse
 
+import aiohttp
 import httpx
 
 from app.config import Settings
+
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
 class PanelError(RuntimeError):
@@ -44,7 +51,12 @@ class TTLCache:
         self._values.clear()
 
 
-READABLE_FILES = {"latest.log", "server.properties"}
+READABLE_FILES = {
+    "latest.log",
+    "server.properties",
+    "eva-backup.b64",
+}
+WRITABLE_FILES = {"eva-backup.b64"}
 READABLE_SUFFIXES = {".yml", ".yaml", ".json", ".txt", ".log", ".properties", ".conf"}
 
 
@@ -184,6 +196,29 @@ class PterodactylClient:
         tail = content.splitlines()[-max(1, lines) :]
         return "\n".join(tail)
 
+    async def write_text_file(self, path: str, content: str) -> None:
+        normalized = (path or "").strip().replace("\\", "/").lstrip("./")
+        if normalized not in WRITABLE_FILES:
+            raise PanelForbidden("This file is not in the writable allowlist")
+        if len(content.encode("utf-8")) > 2_000_000:
+            raise PanelFileTooLarge("Backup file is too large")
+        if not self.ready:
+            raise PanelUnavailable("Panel credentials are not configured")
+        try:
+            response = await self._client.post(
+                self._server_url("/files/write"),
+                json={"file": normalized, "content": content},
+            )
+        except httpx.HTTPError as exc:
+            raise PanelUnavailable("Panel is unreachable") from exc
+        if response.status_code == 401:
+            raise PanelUnavailable("Panel rejected the API key")
+        if response.status_code == 403:
+            raise PanelForbidden("Panel denied the file write")
+        if response.status_code >= 400:
+            raise PanelError(f"Panel returned {response.status_code}")
+        self._cache.clear()
+
     async def send_command(self, command: str) -> None:
         """Send an allowlisted command through the panel websocket API.
 
@@ -211,6 +246,94 @@ class PterodactylClient:
         if response.status_code >= 400:
             raise PanelForbidden(f"Panel returned {response.status_code}")
         self._cache.clear()
+
+    async def console_command(self, command: str) -> str:
+        """Run a command through the panel console WebSocket and capture output.
+
+        The hosting firewall blocks the external RCON port, but its Pterodactyl
+        Wings websocket is reachable with the same API key. This is still
+        owner-only: callers must enforce the allowlist and confirmation.
+        """
+        if not self.ready:
+            raise PanelUnavailable("Panel credentials are not configured")
+        if not command.strip() or len(command) > 300:
+            raise PanelForbidden("Invalid command")
+
+        payload = await self._request("GET", "/websocket")
+        data = payload.get("data") or {}
+        if not isinstance(data, dict):
+            raise PanelError("Panel returned a malformed websocket payload")
+        socket_url = data.get("socket")
+        token = data.get("token")
+        if not isinstance(socket_url, str) or not isinstance(token, str):
+            raise PanelError("Panel returned no websocket credentials")
+
+        parsed = urlparse(self.settings.panel_base)
+        origin = f"{parsed.scheme or 'https'}://{parsed.netloc}"
+        lines: list[str] = []
+        timeout = 12.0
+        session = aiohttp.ClientSession(
+            headers={
+                "Authorization": f"Bearer {self.settings.panel_key.get_secret_value()}",
+                "Accept": "application/json",
+                "User-Agent": "eva-bot/1.0",
+            }
+        )
+        try:
+            async with asyncio.timeout(timeout):
+                ws = await session.ws_connect(
+                    socket_url,
+                    headers={"Origin": origin},
+                    heartbeat=20,
+                    max_msg_size=512 * 1024,
+                )
+                try:
+                    await ws.send_json({"event": "auth", "args": [token]})
+                    authed = False
+                    while not authed:
+                        message = await ws.receive()
+                        if message.type != aiohttp.WSMsgType.TEXT:
+                            raise PanelUnavailable("Panel console closed during auth")
+                        event = self._ws_event(message.data)
+                        if event.get("event") == "auth success":
+                            authed = True
+                        elif event.get("event") == "jwt error":
+                            raise PanelUnavailable("Panel console auth failed")
+
+                    await ws.send_json({"event": "send command", "args": [command]})
+                    idle_deadline = asyncio.get_running_loop().time() + 1.2
+                    while asyncio.get_running_loop().time() < idle_deadline:
+                        try:
+                            message = await ws.receive(timeout=0.4)
+                        except TimeoutError:
+                            continue
+                        if message.type != aiohttp.WSMsgType.TEXT:
+                            break
+                        event = self._ws_event(message.data)
+                        if event.get("event") == "console output":
+                            args = event.get("args") or []
+                            if args:
+                                lines.append(ANSI_RE.sub("", str(args[0])))
+                                idle_deadline = asyncio.get_running_loop().time() + 0.7
+                finally:
+                    await ws.close()
+        except (aiohttp.ClientError, OSError) as exc:
+            raise PanelUnavailable("Panel console is unreachable") from exc
+        finally:
+            await session.close()
+
+        clean = [line.strip() for line in lines if line.strip()]
+        if not clean:
+            raise PanelError("Panel console returned no output")
+        return "\n".join(clean[-20:])
+
+    @staticmethod
+    def _ws_event(raw: str) -> dict[str, Any]:
+        try:
+            value = json.loads(raw)
+        except (TypeError, ValueError):
+            return {}
+        return value if isinstance(value, dict) else {}
 
     async def close(self) -> None:
         await self._client.aclose()

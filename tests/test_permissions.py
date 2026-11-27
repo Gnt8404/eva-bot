@@ -47,6 +47,10 @@ class FakePanel:
     def __init__(self) -> None:
         self.commands: list[str] = []
 
+    async def console_command(self, command: str) -> str:
+        self.commands.append(command)
+        return "There are 3 of a max of 20 players online"
+
     async def send_command(self, command: str) -> None:
         self.commands.append(command)
 
@@ -115,7 +119,7 @@ def test_console_falls_back_to_panel_when_rcon_is_down(settings: Settings) -> No
     service = ConsoleService(settings, rcon=FailingRcon(), panel=panel)  # type: ignore[arg-type]
     pending = asyncio.run(service.prepare(settings.owner_id, "list"))
     output = asyncio.run(service.confirm(settings.owner_id, pending.token))
-    assert "через панель" in output
+    assert "3 of a max of 20" in output
     assert panel.commands == ["list"]
 
 

@@ -14,6 +14,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import Settings
 from app.db.models import StatusSample
+from app.db.remote_backup import RemoteBackup
 from app.db.session import Database
 from app.kb.store import KnowledgeBase
 from app.notify import Notifier
@@ -34,6 +35,7 @@ class Workers:
         notifier: Notifier,
         assets: AssetService,
         digest: DigestService,
+        remote_backup: RemoteBackup,
     ) -> None:
         self.database = database
         self.settings = settings
@@ -42,6 +44,7 @@ class Workers:
         self.notifier = notifier
         self.assets = assets
         self.digest = digest
+        self.remote_backup = remote_backup
         self.scheduler = AsyncIOScheduler(timezone=ZoneInfo(settings.timezone))
         self._alerted: dict[str, datetime] = {}
 
@@ -83,6 +86,14 @@ class Workers:
             coalesce=True,
         )
         self.scheduler.add_job(
+            self._remote_backup,
+            "interval",
+            minutes=10,
+            id="remote_backup",
+            max_instances=1,
+            coalesce=True,
+        )
+        self.scheduler.add_job(
             self.digest.send_daily,
             "cron",
             hour=self.settings.digest_hour,
@@ -115,6 +126,14 @@ class Workers:
     async def shutdown(self) -> None:
         if self.scheduler.running:
             self.scheduler.shutdown(wait=False)
+        if self.remote_backup.enabled:
+            await self.remote_backup.backup(self.database.sqlite_path)
+
+    async def _remote_backup(self) -> None:
+        try:
+            await self.remote_backup.backup(self.database.sqlite_path)
+        except Exception:
+            logger.warning("Remote backup tick failed", exc_info=True)
 
     async def _alert(self, key: str, text: str) -> None:
         now = datetime.now(UTC)

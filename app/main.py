@@ -25,6 +25,7 @@ from app.bot.middlewares import (
 )
 from app.bot.routers import admin, ai, apply, donate, help, menu, report, start
 from app.config import Settings, get_settings
+from app.db.remote_backup import RemoteBackup
 from app.db.session import Database
 from app.kb.learn import LearningService
 from app.kb.store import KnowledgeBase
@@ -88,6 +89,9 @@ async def run() -> None:
             "BOT_TOKEN не задан. Скопируйте .env.example в .env и заполните BOT_TOKEN."
         )
     database = Database.from_settings(settings)
+    panel = PterodactylClient(settings) if settings.panel_ready else None
+    remote_backup = RemoteBackup(settings, panel)
+    await remote_backup.restore_if_missing(database.sqlite_path)
     await database.init_models()
     bot = Bot(
         token=settings.token,
@@ -96,7 +100,6 @@ async def run() -> None:
             link_preview_is_disabled=True,
         ),
     )
-    panel = PterodactylClient(settings) if settings.panel_ready else None
     rcon = (
         RconClient(
             settings.rcon_host,
@@ -125,7 +128,16 @@ async def run() -> None:
     )
     assets = AssetService(database, settings, panel)
     digest = DigestService(database, settings, kb, notifications)
-    workers = Workers(database, settings, kb, status, notifications, assets, digest)
+    workers = Workers(
+        database,
+        settings,
+        kb,
+        status,
+        notifications,
+        assets,
+        digest,
+        remote_backup,
+    )
     services = {
         "settings": settings,
         "db": database,
@@ -143,6 +155,7 @@ async def run() -> None:
         "assets": assets,
         "digest": digest,
         "workers": workers,
+        "remote_backup": remote_backup,
         "bot": bot,
     }
     dispatcher = build_dispatcher(services, settings)

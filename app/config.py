@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     group_reply_all: bool = False
     # Menu-only is the safe default: no free-form prompts, only buttons and commands.
     menu_only: bool = True
+    # Keep the SQLite DB on the game server's durable disk (Render free is ephemeral).
+    remote_backup_enabled: bool = True
     webhook_base_url: str = ""
     webhook_path: str = "/webhook"
     webhook_secret: SecretStr = SecretStr("")

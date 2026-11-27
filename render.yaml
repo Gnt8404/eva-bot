@@ -42,6 +42,8 @@ services:
         value: "25662"
       - key: RCON_PASSWORD
         sync: false
+      - key: REMOTE_BACKUP_ENABLED
+        value: "true"
       - key: LLM_BASE_URL
         value: https://api.deepseek.com/v1
       - key: LLM_MODEL
