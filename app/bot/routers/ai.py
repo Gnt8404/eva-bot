@@ -8,7 +8,7 @@ from aiogram import F, Router
 from aiogram.types import Message
 
 from app.bot.group import clean_question, is_addressed, is_group
-from app.bot.keyboards import question_decision
+from app.bot.keyboards import main_menu, question_decision
 from app.config import Settings
 from app.llm.service import AnswerKind, AssistantService
 from app.notify import Notifier
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 router = Router(name="ai")
 
 GROUP_GREETING = "Да, я здесь. Напишите вопрос."
+MENU_ONLY_HINT = "Ева работает через меню. Выберите раздел ниже или нажмите /menu."
 
 RESERVED = {
     "Нужна помощь",
@@ -74,6 +75,13 @@ async def ai_answer(
         reply_all=settings.group_reply_all,
     ):
         return
+    if settings.menu_only:
+        if not group:
+            await message.answer(
+                MENU_ONLY_HINT,
+                reply_markup=main_menu(settings.is_owner(message.from_user.id)),
+            )
+        return
     question = (message.text or "").strip()
     if group:
         question = clean_question(question, settings.bot_username)
@@ -100,6 +108,13 @@ async def ai_caption(
         settings.bot_username,
         reply_all=settings.group_reply_all,
     ):
+        return
+    if settings.menu_only:
+        if not group:
+            await message.answer(
+                MENU_ONLY_HINT,
+                reply_markup=main_menu(settings.is_owner(message.from_user.id)),
+            )
         return
     question = (message.caption or "").strip()
     if group:

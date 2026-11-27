@@ -222,6 +222,15 @@ class DonationService:
             ",", " "
         )
 
+    def amount_for(self, package: Package, currency: Currency | str) -> str:
+        """Human-readable package amount in the currency the player selected."""
+        normalized = Currency(str(currency).upper())
+        if normalized is Currency.RUB:
+            return f"{package.rub} ₽"
+        if normalized is Currency.USD:
+            return f"{package.usd} $"
+        return f"{package.uzs:,} сум".replace(",", " ")
+
     async def create_application(
         self,
         *,

@@ -176,6 +176,7 @@ documents:
     summary: "Доступны телепорты, авторизация, браки, голосовой чат и другие команды плагинов."
     content: |
       AdvancedTeleport: /tpa, /spawn, /home, /warp.
+      Вернуться к месту смерти: /back, если команда доступна.
       SimpleLogin: /login и /register.
       Wedding оформляет браки между игроками; voicechat отвечает за голосовой чат.
       PvP переключается плагином pvpoption.

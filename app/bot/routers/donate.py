@@ -27,6 +27,13 @@ from app.tickets.service import DonationService
 router = Router(name="donate")
 
 
+def _currency(value: object) -> Currency:
+    try:
+        return Currency(str(value or "RUB").upper())
+    except ValueError:
+        return Currency.RUB
+
+
 async def _send_donation(message: Message, donations: DonationService) -> None:
     await message.answer(donations.message, reply_markup=donate_menu())
     await message.answer(
@@ -58,7 +65,9 @@ async def requisites_menu(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data.startswith("donate:req:"))
-async def show_requisites(callback: CallbackQuery, donations: DonationService) -> None:
+async def show_requisites(
+    callback: CallbackQuery, state: FSMContext, donations: DonationService
+) -> None:
     raw = (callback.data or "").split(":")[-1]
     try:
         currency = Currency(raw)
@@ -66,6 +75,7 @@ async def show_requisites(callback: CallbackQuery, donations: DonationService) -
         await callback.answer("Неизвестная валюта", show_alert=True)
         return
     item = donations.requisites(currency)
+    await state.update_data(donation_currency=currency.value)
     await callback.answer()
     if not isinstance(callback.message, Message):
         return
@@ -81,7 +91,10 @@ async def show_requisites(callback: CallbackQuery, donations: DonationService) -
 
 @router.callback_query(F.data == CB_DONATE_PAID)
 async def start_purchase(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    currency = _currency(data.get("donation_currency"))
     await state.clear()
+    await state.update_data(donation_currency=currency.value)
     await state.set_state(DonationForm.nickname)
     await callback.answer()
     if isinstance(callback.message, Message):
@@ -137,9 +150,13 @@ async def step_screenshot(
     )
     await state.set_state(DonationForm.package)
     data = await state.get_data()
-    labels = [(item.id, f"{item.label} — {item.rub} ₽") for item in donations.packages]
+    currency = _currency(data.get("donation_currency"))
+    labels = [
+        (item.id, f"{item.label} — {donations.amount_for(item, currency)}")
+        for item in donations.packages
+    ]
     await message.answer(
-        f"Шаг 4/4. Выберите пакет. Ник: {data.get('nickname')}.",
+        f"Шаг 4/4. Валюта: {currency.value}. Выберите пакет. Ник: {data.get('nickname')}.",
         reply_markup=packages_menu(labels),
     )
 
@@ -154,6 +171,7 @@ async def choose_package(
 ) -> None:
     package_id = (callback.data or "").split(":")[-1]
     data = await state.get_data()
+    currency = _currency(data.get("donation_currency"))
     if not data.get("nickname") or not data.get("screenshot_file_id"):
         await callback.answer("Заявка устарела. Начните заново.", show_alert=True)
         await state.clear()
@@ -189,8 +207,9 @@ async def choose_package(
     await callback.answer("Заявка отправлена")
     if isinstance(callback.message, Message):
         await callback.message.answer(
-            f"Заявка #{donation.id} отправлена. Сумма: {package.rub} ₽ / "
-            f"{package.usd} $ / {package.uzs} сум. Промокод выдаётся только после проверки чека.",
+            f"Заявка #{donation.id} отправлена. Сумма: "
+            f"{donations.amount_for(package, currency)}. "
+            "Промокод выдаётся только после проверки чека.",
         )
 
 

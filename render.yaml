@@ -14,6 +14,8 @@ services:
         value: Aetherlynbot
       - key: GROUP_REPLY_ALL
         value: "false"
+      - key: MENU_ONLY
+        value: "true"
       - key: WEBHOOK_HOST
         value: 0.0.0.0
       - key: WEBHOOK_SECRET
@@ -47,6 +49,6 @@ services:
       - key: LLM_API_KEY
         sync: false
       - key: ALLOW_GENERAL_TOPICS
-        value: "true"
+        value: "false"
       - key: TZ
         value: Europe/Moscow

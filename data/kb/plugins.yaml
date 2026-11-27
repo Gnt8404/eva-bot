@@ -5,18 +5,22 @@ plugins:
   - name: AetherlynTab
     version: "1.0.6"
     description: "таб-лист и оформление списка игроков"
+    admin_only: true
   - name: AxGraves
     version: "1.32.2"
     description: "могилы с лутом после смерти"
   - name: BedrockSkinRestorer
     version: "1.0.5"
     description: "скины Bedrock-игроков"
+    admin_only: true
   - name: Chunky
     version: "1.4.40"
     description: "предгенерация чанков"
+    admin_only: true
   - name: CoreProtect-CE
     version: "24.1"
     description: "лог блоков и откат гриферства"
+    admin_only: true
   - name: EssentialsX
     version: "2.22.0"
     description: "базовые команды, экономика, киты"
@@ -29,45 +33,55 @@ plugins:
   - name: InventoryRollbackPlus
     version: "1.8.5"
     description: "бэкап и откат инвентарей"
+    admin_only: true
   - name: LogCleaner
     version: "1.4"
     description: "ротация логов"
+    admin_only: true
   - name: LuckPerms
     version: "5.5.71"
     description: "права и группы"
+    admin_only: true
   - name: MSP-BattlePass
     version: "0.1.5-sorrow"
     description: "боевой пропуск и награды сезона"
   - name: PlaceholderAPI
     version: "2.12.3"
     description: "плейсхолдеры"
+    admin_only: true
   - name: ProtocolLib
     version: "встроенный"
     description: "библиотека протокола"
+    admin_only: true
   - name: RedstoneReboot
     version: "1.6.6"
     description: "перезапуск по расписанию"
+    admin_only: true
   - name: SimpleLogin
     version: "1.16.7"
     description: "авторизация /login и /register"
   - name: SkinsRestorer
     version: "встроенный"
     description: "скины Java-игроков"
+    admin_only: true
   - name: Sorrow
     version: "1.48.2"
     description: "авторский мир-лабиринт: записки, квесты, промокоды, мимик, рулетка, душевный магазин, катакомбы"
   - name: ViaVersion
     version: "5.12.2"
     description: "поддержка клиентов новых версий"
+    admin_only: true
   - name: ViaBackwards
     version: "5.12.2"
     description: "поддержка клиентов старых версий"
+    admin_only: true
   - name: Wedding
     version: "1.4.1"
     description: "браки между игроками"
   - name: GrimAC
     version: "2.3.75"
     description: "античит"
+    admin_only: true
   - name: pvpoption
     version: "1.5.3"
     description: "переключатель PvP"
@@ -77,9 +91,11 @@ plugins:
   - name: WorldEdit
     version: "7.4.6"
     description: "редактирование мира"
+    admin_only: true
   - name: WorldGuard
     version: "7.0.17"
     description: "регионы и защита территорий"
+    admin_only: true
   - name: zMItemsBuilder
     version: "2.1.0"
     description: "кастомные предметы"

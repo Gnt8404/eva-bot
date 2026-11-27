@@ -60,12 +60,26 @@ async def server_info(
     await message.answer(text)
 
 
-def _plugins_text(plugins: list[dict[str, Any]], page: int) -> tuple[str, int]:
+def _can_see_admin(settings: Settings, user_id: int | None) -> bool:
+    if user_id is None:
+        return False
+    return settings.is_owner(user_id) or settings.is_readonly_admin(user_id)
+
+
+def _plugins_text(
+    plugins: list[dict[str, Any]], page: int, *, include_admin: bool
+) -> tuple[str, int]:
     pages = max(1, math.ceil(len(plugins) / PAGE_SIZE))
     page = max(0, min(page, pages - 1))
     subset = plugins[page * PAGE_SIZE : (page + 1) * PAGE_SIZE]
+    access_note = (
+        "Полный список: владелец/админ."
+        if include_admin
+        else "Показаны только плагины, доступные игрокам; административные скрыты."
+    )
     lines = [
-        f"Плагины Aetherlyn, страница {page + 1}/{pages}. Источник: API сервера / база знаний."
+        f"Плагины Aetherlyn, страница {page + 1}/{pages}. {access_note} "
+        "Источник: API сервера / база знаний."
     ]
     for item in subset:
         version = str(item.get("version") or "").strip()
@@ -79,24 +93,33 @@ def _plugins_text(plugins: list[dict[str, Any]], page: int) -> tuple[str, int]:
     return "\n".join(lines), pages
 
 
-async def _send_plugins(target: Message, kb: KnowledgeBase, page: int) -> None:
-    plugins = kb.plugins()
-    text, pages = _plugins_text(plugins, page)
+async def _send_plugins(
+    target: Message, kb: KnowledgeBase, page: int, *, include_admin: bool
+) -> None:
+    plugins = kb.plugins(include_admin=include_admin)
+    text, pages = _plugins_text(plugins, page, include_admin=include_admin)
     await target.answer(text, reply_markup=plugins_menu(page, pages))
 
 
 @router.message(Command("plugins"))
 @router.message(F.text == BTN_PLUGINS)
-async def plugins_entry(message: Message, kb: KnowledgeBase) -> None:
-    await _send_plugins(message, kb, 0)
+async def plugins_entry(message: Message, kb: KnowledgeBase, settings: Settings) -> None:
+    user_id = message.from_user.id if message.from_user else None
+    await _send_plugins(
+        message,
+        kb,
+        0,
+        include_admin=_can_see_admin(settings, user_id),
+    )
 
 
 @router.callback_query(F.data.startswith(f"{CB_PLUGINS_LIST}:"))
-async def plugins_page(callback: CallbackQuery, kb: KnowledgeBase) -> None:
+async def plugins_page(callback: CallbackQuery, kb: KnowledgeBase, settings: Settings) -> None:
     raw = (callback.data or "").split(":")[-1]
     page = int(raw) if raw.isdigit() else 0
-    plugins = kb.plugins()
-    text, pages = _plugins_text(plugins, page)
+    user_id = callback.from_user.id if callback.from_user else None
+    plugins = kb.plugins(include_admin=_can_see_admin(settings, user_id))
+    text, pages = _plugins_text(plugins, page, include_admin=_can_see_admin(settings, user_id))
     await callback.answer()
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=plugins_menu(page, pages))
@@ -142,7 +165,8 @@ async def search_plugins(
         )
         return
     found: list[str] = []
-    for item in kb.plugins():
+    user_id = message.from_user.id if message.from_user else None
+    for item in kb.plugins(include_admin=_can_see_admin(settings, user_id)):
         haystack = " ".join(
             str(item.get(key) or "") for key in ("name", "description", "version")
         ).lower()

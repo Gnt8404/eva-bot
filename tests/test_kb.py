@@ -101,3 +101,14 @@ async def test_reindex_preserves_static_and_posts(kb: KnowledgeBase) -> None:
     assert stats.chunks == before
     response = await kb.search("Paper 1.21.11")
     assert response.results
+
+
+def test_admin_plugins_are_hidden_from_players(kb: KnowledgeBase) -> None:
+    visible = {item["name"] for item in kb.plugins()}
+    full = {item["name"] for item in kb.plugins(include_admin=True)}
+    assert "LuckPerms" not in visible
+    assert "WorldEdit" not in visible
+    assert "LuckPerms" in full
+    assert "WorldEdit" in full
+    assert "Geyser" in visible
+    assert "Floodgate" in visible

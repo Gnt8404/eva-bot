@@ -26,7 +26,7 @@ router = Router(name="start")
 
 WELCOME = (
     "Ева — помощник сервера Aetherlyn.\n"
-    "Спросите про правила, подключение, плагины, Sorrow, донат или набор в команду.\n"
+    "Выберите раздел кнопками ниже или откройте /menu.\n"
     "Ответы только по фактам базы знаний, без выдумок."
 )
 
@@ -64,7 +64,7 @@ async def cmd_start(
     if is_group(message):
         if message.from_user is not None:
             await message.answer(
-                "Меню Aetherlyn: выберите раздел кнопками ниже или спросите меня по имени «Ева».",
+                "Меню Aetherlyn: выберите раздел кнопками ниже или откройте /menu.",
                 reply_markup=main_menu(settings.is_owner(message.from_user.id)),
             )
         return
@@ -160,7 +160,8 @@ async def cmd_help(message: Message, settings: Settings) -> None:
         "Команды: /start — меню, /menu — главное меню, /server — о сервере, "
         "/plugins — плагины, /donate — донаты, /report — жалоба, /apply — анкета, "
         "/cancel — отменить действие.\n"
-        "В группе можно писать «Ева» перед вопросом.",
+        "В группе команды и меню работают так же; для возврата к месту смерти "
+        "используйте игровую команду /back, если она доступна.",
         reply_markup=main_menu(settings.is_owner(user_id)),
     )
 

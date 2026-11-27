@@ -41,7 +41,7 @@ def main_menu(is_owner: bool) -> ReplyKeyboardMarkup:
     if is_owner:
         rows.append([KeyboardButton(text=BTN_CONSOLE)])
     return ReplyKeyboardMarkup(
-        keyboard=rows, resize_keyboard=True, input_field_placeholder="Вопрос о сервере Aetherlyn"
+        keyboard=rows, resize_keyboard=True, input_field_placeholder="Выберите раздел меню"
     )
 
 
@@ -82,6 +82,7 @@ def help_menu() -> InlineKeyboardMarkup:
         for title, key in topics
     ]
     rows.append([InlineKeyboardButton(text="Позвать администратора", callback_data=CB_HELP_ADMIN)])
+    rows.append([InlineKeyboardButton(text="Главное меню", callback_data="menu:main")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -94,6 +95,7 @@ def escalation_menu(topic: str) -> InlineKeyboardMarkup:
                 )
             ],
             [InlineKeyboardButton(text="В меню помощи", callback_data="help:topic:other")],
+            [InlineKeyboardButton(text="Главное меню", callback_data="menu:main")],
         ]
     )
 
@@ -133,6 +135,7 @@ def donate_menu() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text="Я оплатил", callback_data=CB_DONATE_PAID)],
             [InlineKeyboardButton(text="Показать реквизиты", callback_data=CB_DONATE_REQUISITES)],
+            [InlineKeyboardButton(text="Главное меню", callback_data="menu:main")],
         ]
     )
 
@@ -155,7 +158,7 @@ def packages_menu(packages: list[tuple[str, str]]) -> InlineKeyboardMarkup:
     row: list[InlineKeyboardButton] = []
     for package_id, label in packages:
         row.append(InlineKeyboardButton(text=label, callback_data=f"donate:pkg:{package_id}"))
-        if len(row) == 3:
+        if len(row) == 2:
             rows.append(row)
             row = []
     if row:
@@ -183,6 +186,7 @@ def plugins_menu(page: int, pages: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="Поиск", callback_data=CB_PLUGINS_SEARCH),
         ]
     )
+    rows.append([InlineKeyboardButton(text="Главное меню", callback_data="menu:main")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -192,7 +196,8 @@ def back_to_plugins() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="Плагины", callback_data=f"{CB_PLUGINS_LIST}:0"),
                 InlineKeyboardButton(text="Датапаки", callback_data=CB_PLUGINS_DATAPACKS),
-            ]
+            ],
+            [InlineKeyboardButton(text="Главное меню", callback_data="menu:main")],
         ]
     )
 

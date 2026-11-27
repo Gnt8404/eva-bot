@@ -34,6 +34,13 @@ def test_packages_and_fixed_usd_formula(donations: DonationService) -> None:
     donations.validate_prices()
 
 
+def test_amount_for_selected_currency(donations: DonationService) -> None:
+    package = donations.package("seals-100")
+    assert donations.amount_for(package, Currency.RUB) == "175 ₽"
+    assert donations.amount_for(package, Currency.USD) == "1.95 $"
+    assert donations.amount_for(package, Currency.UZS) == "49 000 сум"
+
+
 def test_requisites_hide_full_card_from_public_fields(
     settings: Settings, donations: DonationService
 ) -> None:

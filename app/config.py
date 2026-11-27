@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     bot_username: str = "Aetherlynbot"
     # In groups Eva reacts to a mention/reply/name. Set true to answer every message.
     group_reply_all: bool = False
+    # Menu-only is the safe default: no free-form prompts, only buttons and commands.
+    menu_only: bool = True
     webhook_base_url: str = ""
     webhook_path: str = "/webhook"
     webhook_secret: SecretStr = SecretStr("")

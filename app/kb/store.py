@@ -319,8 +319,11 @@ class KnowledgeBase:
     def donation_config(self) -> dict[str, Any]:
         return load_donation(self.settings)
 
-    def plugins(self) -> list[dict[str, Any]]:
-        return load_plugins(self.settings)
+    def plugins(self, *, include_admin: bool = False) -> list[dict[str, Any]]:
+        plugins = load_plugins(self.settings)
+        if include_admin:
+            return plugins
+        return [item for item in plugins if not item.get("admin_only")]
 
     def datapacks(self) -> list[dict[str, Any]]:
         return load_datapacks(self.settings)
