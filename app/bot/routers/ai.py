@@ -76,11 +76,11 @@ async def ai_answer(
     ):
         return
     if settings.menu_only:
-        if not group:
-            await message.answer(
-                MENU_ONLY_HINT,
-                reply_markup=main_menu(settings.is_owner(message.from_user.id)),
-            )
+        await message.answer(
+            MENU_ONLY_HINT,
+            reply_markup=main_menu(settings.is_owner(message.from_user.id)) if not group else None,
+            parse_mode=None,
+        )
         return
     question = (message.text or "").strip()
     if group:
@@ -110,11 +110,11 @@ async def ai_caption(
     ):
         return
     if settings.menu_only:
-        if not group:
-            await message.answer(
-                MENU_ONLY_HINT,
-                reply_markup=main_menu(settings.is_owner(message.from_user.id)),
-            )
+        await message.answer(
+            MENU_ONLY_HINT,
+            reply_markup=main_menu(settings.is_owner(message.from_user.id)) if not group else None,
+            parse_mode=None,
+        )
         return
     question = (message.caption or "").strip()
     if group:

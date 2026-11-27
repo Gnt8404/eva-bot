@@ -159,7 +159,7 @@ async def cmd_help(message: Message, settings: Settings) -> None:
     await message.answer(
         "Команды: /start — меню, /menu — главное меню, /server — о сервере, "
         "/plugins — плагины, /donate — донаты, /report — жалоба, /apply — анкета, "
-        "/cancel — отменить действие.\n"
+        "/back — как вернуться к месту смерти, /cancel — отменить действие.\n"
         "В группе команды и меню работают так же; для возврата к месту смерти "
         "используйте игровую команду /back, если она доступна.",
         reply_markup=main_menu(settings.is_owner(user_id)),

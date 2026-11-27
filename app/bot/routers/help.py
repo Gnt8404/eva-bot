@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -63,6 +64,16 @@ async def _topic_answer(
 async def help_entry(message: Message) -> None:
     await message.answer(
         "Выберите тему — ответ будет только по фактам базы знаний.", reply_markup=help_menu()
+    )
+
+
+@router.message(Command("back"))
+async def back_command(message: Message) -> None:
+    await message.answer(
+        "В игре /back возвращает к месту смерти, если команда включена. "
+        "Если вещи пропали из-за ошибки, откройте «Нужна помощь» → «Потеря вещей» "
+        "и создайте обращение. Источник: #Aetherlyn",
+        parse_mode=None,
     )
 
 
