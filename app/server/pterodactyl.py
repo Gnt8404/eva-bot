@@ -180,13 +180,29 @@ class PterodactylClient:
 
     async def file_contents(self, path: str, *, max_bytes: int = 1_000_000) -> str:
         safe_path = validate_read_path(path)
-        payload = await self._request("GET", "/files/contents", params={"file": safe_path})
-        attributes = payload.get("attributes") or {}
-        content = attributes.get("content") if isinstance(attributes, dict) else None
-        if content is None:
+        if not self.ready:
+            raise PanelUnavailable("Panel credentials are not configured")
+        try:
+            response = await self._client.get(
+                self._server_url("/files/contents"), params={"file": safe_path}
+            )
+        except httpx.HTTPError as exc:
+            raise PanelUnavailable("Panel is unreachable") from exc
+        if response.status_code == 401:
+            raise PanelUnavailable("Panel rejected the API key")
+        if response.status_code == 403:
+            raise PanelForbidden("Panel denied the file read")
+        if response.status_code >= 400:
+            raise PanelError(f"Panel returned {response.status_code}")
+        content = response.text
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and isinstance(payload.get("content"), str):
+            content = payload["content"]
+        if not content:
             raise PanelError("Panel returned no file content")
-        if not isinstance(content, str):
-            content = str(content)
         if len(content.encode("utf-8")) > max_bytes:
             raise PanelFileTooLarge("File is too large")
         return content
