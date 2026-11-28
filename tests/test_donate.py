@@ -30,7 +30,10 @@ def test_packages_and_fixed_usd_formula(donations: DonationService) -> None:
     assert donations.calculate_usd(175) == "1.95"
     assert packages["seals-1000"].rub == 1240
     assert donations.calculate_usd(1240) == "13.80"
-    assert packages["game-pass"].rub == 200
+    assert packages["game-pass"].rub == 150
+    assert packages["game-pass"].stars == 188
+    assert packages["game-pass"].usd == "1.65"
+    assert packages["game-pass"].uzs == 45000
     donations.validate_prices()
 
 
