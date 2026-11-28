@@ -9,6 +9,7 @@ from enum import StrEnum
 class TicketKind(StrEnum):
     REPORT = "report"
     APPLICATION = "application"
+    WHITELIST = "whitelist"
     DONATION = "donation"
     QUESTION = "question"
     SUPPORT = "support"

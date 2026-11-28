@@ -23,7 +23,7 @@ from app.bot.middlewares import (
     LoggingMiddleware,
     ThrottlingMiddleware,
 )
-from app.bot.routers import admin, ai, apply, donate, help, menu, report, start
+from app.bot.routers import admin, ai, apply, donate, help, menu, report, start, whitelist
 from app.config import Settings, get_settings
 from app.db.remote_backup import RemoteBackup
 from app.db.session import Database
@@ -75,6 +75,7 @@ def build_dispatcher(services: dict[str, Any], settings: Settings) -> Dispatcher
     dispatcher.include_router(help.router)
     dispatcher.include_router(report.router)
     dispatcher.include_router(apply.router)
+    dispatcher.include_router(whitelist.router)
     dispatcher.include_router(donate.router)
     dispatcher.include_router(admin.router)
     dispatcher.include_router(ai.router)

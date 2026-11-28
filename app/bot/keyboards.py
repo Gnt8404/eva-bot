@@ -13,7 +13,8 @@ BTN_HELP = "Нужна помощь"
 BTN_REPORT = "Жалоба на игрока"
 BTN_SERVER = "О сервере"
 BTN_PLUGINS = "Плагины и датапаки"
-BTN_APPLY = "Анкета"
+BTN_APPLY = "Анкета в команду"
+BTN_WHITELIST = "Заявка в белый список"
 BTN_DONATE = "Донаты"
 BTN_CONSOLE = "Консоль"
 
@@ -23,6 +24,7 @@ CB_CANCEL = "flow:cancel"
 CB_HELP_ADMIN = "help:admin"
 CB_REPORT_START = "report:start"
 CB_APPLY_START = "apply:start"
+CB_WHITELIST_START = "whitelist:start"
 CB_DONATE_PAID = "donate:paid"
 CB_DONATE_REQUISITES = "donate:req"
 CB_PLUGINS_LIST = "plugins:list"
@@ -36,10 +38,11 @@ def main_menu(is_owner: bool) -> ReplyKeyboardMarkup:
     rows = [
         [KeyboardButton(text=BTN_HELP), KeyboardButton(text=BTN_REPORT)],
         [KeyboardButton(text=BTN_SERVER), KeyboardButton(text=BTN_PLUGINS)],
-        [KeyboardButton(text=BTN_APPLY), KeyboardButton(text=BTN_DONATE)],
+        [KeyboardButton(text=BTN_APPLY), KeyboardButton(text=BTN_WHITELIST)],
+        [KeyboardButton(text=BTN_DONATE)],
     ]
     if is_owner:
-        rows.append([KeyboardButton(text=BTN_CONSOLE)])
+        rows[-1].append(KeyboardButton(text=BTN_CONSOLE))
     return ReplyKeyboardMarkup(
         keyboard=rows, resize_keyboard=True, input_field_placeholder="Выберите раздел меню"
     )
@@ -126,6 +129,56 @@ def apply_confirm_menu() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text="Отправить анкету", callback_data="apply:confirm")],
             [InlineKeyboardButton(text="Отмена", callback_data=CB_CANCEL)],
+        ]
+    )
+
+
+def whitelist_platform_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Java", callback_data="whitelist:platform:java"),
+                InlineKeyboardButton(text="Bedrock", callback_data="whitelist:platform:bedrock"),
+            ],
+            [InlineKeyboardButton(text="Отмена", callback_data=CB_CANCEL)],
+        ]
+    )
+
+
+def whitelist_rules_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Принимаю правила", callback_data="whitelist:rules:yes")],
+            [InlineKeyboardButton(text="Отмена", callback_data=CB_CANCEL)],
+        ]
+    )
+
+
+def whitelist_confirm_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Отправить заявку", callback_data="whitelist:confirm")],
+            [InlineKeyboardButton(text="Отмена", callback_data=CB_CANCEL)],
+        ]
+    )
+
+
+def whitelist_decision(ticket_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Одобрить", callback_data=f"ticket:white:{ticket_id}:approve"
+                ),
+                InlineKeyboardButton(
+                    text="Отклонить", callback_data=f"ticket:white:{ticket_id}:reject"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Запросить детали", callback_data=f"ticket:white:{ticket_id}:details"
+                )
+            ],
         ]
     )
 
@@ -358,4 +411,8 @@ __all__ = [name for name in dir() if name.startswith(("BTN_", "CB_"))] + [
     "report_confirm_menu",
     "report_decision",
     "subscription_menu",
+    "whitelist_confirm_menu",
+    "whitelist_decision",
+    "whitelist_platform_menu",
+    "whitelist_rules_menu",
 ]

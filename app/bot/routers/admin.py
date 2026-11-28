@@ -23,6 +23,7 @@ from app.bot.keyboards import (
     donation_decision,
     question_decision,
     report_decision,
+    whitelist_decision,
 )
 from app.bot.states import BroadcastForm, ConsoleForm, FaqAnswer
 from app.config import Settings
@@ -43,6 +44,7 @@ from app.tickets.cards import (
     generic_card,
     question_card,
     report_card,
+    whitelist_card,
 )
 from app.tickets.model import TicketKind, TicketStatus
 from app.tickets.service import DonationService, TicketService
@@ -137,6 +139,8 @@ async def admin_tickets(
             card, mark = report_card(ticket), report_decision(ticket.id)
         elif ticket.kind == TicketKind.APPLICATION.value:
             card, mark = application_card(ticket), application_decision(ticket.id)
+        elif ticket.kind == TicketKind.WHITELIST.value:
+            card, mark = whitelist_card(ticket), whitelist_decision(ticket.id)
         elif ticket.kind == TicketKind.QUESTION.value:
             card, mark = question_card(ticket), question_decision(ticket.id)
         elif ticket.kind == TicketKind.DONATION.value:
@@ -511,6 +515,43 @@ async def application_decision_callback(
     await tickets.decide(ticket_id, status=status, decided_by=callback.from_user.id)
     await notifier.user(
         ticket.user_id, decision_message(TicketKind.APPLICATION.value, status.value, ticket_id)
+    )
+    await callback.answer("Решение сохранено")
+    if isinstance(callback.message, Message):
+        await callback.message.edit_reply_markup(reply_markup=None)
+
+
+@router.callback_query(F.data.startswith("ticket:white:"))
+async def whitelist_decision_callback(
+    callback: CallbackQuery,
+    settings: Settings,
+    audit: AuditService,
+    tickets: TicketService,
+    notifier: Notifier,
+) -> None:
+    if not _owner(settings, callback.from_user.id if callback.from_user else None):
+        await _deny(callback, settings, audit)
+        return
+    parts = (callback.data or "").split(":")
+    if len(parts) != 4 or not parts[2].isdigit():
+        await callback.answer("Некорректное действие", show_alert=True)
+        return
+    ticket_id, action = int(parts[2]), parts[3]
+    status = {
+        "approve": TicketStatus.APPROVED,
+        "reject": TicketStatus.REJECTED,
+        "details": TicketStatus.NEEDS_INFO,
+    }.get(action)
+    if status is None:
+        await callback.answer("Некорректное действие", show_alert=True)
+        return
+    ticket = await tickets.get(ticket_id)
+    if ticket is None or ticket.kind != TicketKind.WHITELIST.value:
+        await callback.answer("Заявка не найдена", show_alert=True)
+        return
+    await tickets.decide(ticket_id, status=status, decided_by=callback.from_user.id)
+    await notifier.user(
+        ticket.user_id, decision_message(TicketKind.WHITELIST.value, status.value, ticket_id)
     )
     await callback.answer("Решение сохранено")
     if isinstance(callback.message, Message):

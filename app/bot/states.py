@@ -27,6 +27,16 @@ class ApplicationForm(StatesGroup):
     confirm = State()
 
 
+class WhitelistForm(StatesGroup):
+    nickname = State()
+    platform = State()
+    age = State()
+    experience = State()
+    motivation = State()
+    rules = State()
+    confirm = State()
+
+
 class DonationForm(StatesGroup):
     nickname = State()
     telegram = State()

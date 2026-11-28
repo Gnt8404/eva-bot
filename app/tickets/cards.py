@@ -13,6 +13,7 @@ from app.utils import display_user, escape, fmt_dt, shorten
 KIND_TITLES = {
     TicketKind.REPORT: "Жалоба на игрока",
     TicketKind.APPLICATION: "Анкета в команду",
+    TicketKind.WHITELIST: "Заявка в белый список",
     TicketKind.DONATION: "Заявка на донат",
     TicketKind.QUESTION: "Вопрос без ответа",
     TicketKind.SUPPORT: "Обращение",
@@ -66,6 +67,23 @@ def application_card(ticket: TicketRow) -> str:
     return "\n".join(lines)
 
 
+def whitelist_card(ticket: TicketRow) -> str:
+    payload = ticket.payload or {}
+    lines = [
+        _header(ticket),
+        f"Ник в игре: {_value(payload, 'nickname', 32)}",
+        f"Платформа: {_value(payload, 'platform', 16)}",
+        f"Возраст: {_value(payload, 'age', 16)}",
+        f"Опыт: {_value(payload, 'experience', 400)}",
+        "Почему хочет на сервер:",
+        _value(payload, "motivation", 500),
+        f"Telegram: {_value(payload, 'username', 64)}",
+        f"Правила приняты: {'да' if payload.get('rules_accepted') else 'нет'}",
+        f"Создано: {fmt_dt(ticket.created_at)}",
+    ]
+    return "\n".join(lines)
+
+
 def donation_card(donation: DonationRow, *, ticket_id: int | None = None) -> str:
     kind = "игровой пасс" if donation.package_id == "game-pass" else "печати"
     source = f"#{donation.id}" if ticket_id is None else f"#{donation.id} / тикет #{ticket_id}"
@@ -114,6 +132,8 @@ def ticket_card(ticket: TicketRow) -> str:
         return report_card(ticket)
     if ticket.kind == TicketKind.APPLICATION:
         return application_card(ticket)
+    if ticket.kind == TicketKind.WHITELIST:
+        return whitelist_card(ticket)
     if ticket.kind == TicketKind.QUESTION:
         return question_card(ticket)
     return generic_card(ticket)
@@ -130,19 +150,24 @@ def donor_message(package_label: str, promo: str) -> str:
 
 
 def decision_message(kind: str, decision: str, ticket_id: int) -> str:
-    if decision == TicketStatus.APPROVED:
+    if decision == TicketStatus.APPROVED.value:
         text = "принята"
-    elif decision == TicketStatus.REJECTED:
+    elif decision == TicketStatus.REJECTED.value:
         text = "отклонена"
-    elif decision == TicketStatus.PROBATION:
+    elif decision == TicketStatus.PROBATION.value:
         text = "принята на испытательный срок"
-    elif decision == TicketStatus.RESERVE:
+    elif decision == TicketStatus.RESERVE.value:
         text = "добавлена в резерв"
-    elif decision == TicketStatus.NEEDS_INFO:
+    elif decision == TicketStatus.NEEDS_INFO.value:
         text = "возвращена на уточнение"
-    elif decision == TicketStatus.ANSWERED:
+    elif decision == TicketStatus.ANSWERED.value:
         text = "обработана"
     else:
         text = "обновлена"
-    label = "Жалоба" if kind == TicketKind.REPORT else "Анкета"
+    labels = {
+        TicketKind.REPORT: "Жалоба",
+        TicketKind.APPLICATION: "Анкета в команду",
+        TicketKind.WHITELIST: "Заявка в белый список",
+    }
+    label = labels.get(TicketKind(kind), "Обращение")
     return f"{label} #{ticket_id} {text}. Решение администратора окончательное."

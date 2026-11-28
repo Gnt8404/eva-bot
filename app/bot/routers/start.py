@@ -27,6 +27,7 @@ router = Router(name="start")
 WELCOME = (
     "Ева — помощник сервера Aetherlyn.\n"
     "Выберите раздел кнопками ниже или откройте /menu.\n"
+    "Анкета в команду и заявка в белый список — разные кнопки.\n"
     "Ответы только по фактам базы знаний, без выдумок."
 )
 
@@ -158,7 +159,8 @@ async def cmd_help(message: Message, settings: Settings) -> None:
     user_id = message.from_user.id if message.from_user else 0
     await message.answer(
         "Команды: /start — меню, /menu — главное меню, /server — о сервере, "
-        "/plugins — плагины, /donate — донаты, /report — жалоба, /apply — анкета, "
+        "/plugins — плагины, /donate — донаты, /report — жалоба, "
+        "/apply — анкета в команду, /whitelist — заявка в белый список, "
         "/back — как вернуться к месту смерти, /cancel — отменить действие.\n"
         "В группе команды и меню работают так же; для возврата к месту смерти "
         "используйте игровую команду /back, если она доступна.",

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import math
 from typing import Any
 
@@ -25,8 +27,10 @@ from app.config import Settings
 from app.kb.store import KnowledgeBase
 from app.server.status import StatusService
 
+logger = logging.getLogger(__name__)
 router = Router(name="menu")
 PAGE_SIZE = 8
+STATUS_UNAVAILABLE = "Статус сейчас недоступен — проверьте позже."
 
 
 def _server_text(settings: Settings, status_text: str, channels: list[dict[str, Any]]) -> str:
@@ -55,9 +59,14 @@ async def server_info(
     kb: KnowledgeBase,
     status: StatusService,
 ) -> None:
-    snapshot = await status.snapshot()
-    text = _server_text(settings, snapshot.as_text(), kb.channels())
-    await message.answer(text)
+    try:
+        snapshot = await asyncio.wait_for(status.snapshot(), timeout=8)
+        status_text = snapshot.as_text()
+    except Exception:
+        logger.exception("server status unavailable")
+        status_text = STATUS_UNAVAILABLE
+    text = _server_text(settings, status_text, kb.channels())
+    await message.answer(text, parse_mode=None)
 
 
 def _can_see_admin(settings: Settings, user_id: int | None) -> bool:

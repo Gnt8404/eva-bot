@@ -35,12 +35,17 @@ router = Router(name="apply")
 
 
 async def _begin(message: Message, state: FSMContext) -> None:
+    await state.clear()
     await state.set_state(ApplicationForm.age)
-    await message.answer("Шаг 1/7. Сколько вам полных лет?", reply_markup=cancel_menu())
+    await message.answer(
+        "Анкета в команду Aetherlyn. Это заявка на модерацию/строительство, "
+        "не белый список.\nШаг 1/7. Сколько вам полных лет?",
+        reply_markup=cancel_menu(),
+    )
 
 
 @router.message(Command("apply"))
-@router.message(F.text == BTN_APPLY)
+@router.message(F.text.in_({BTN_APPLY, "Анкета"}))
 async def apply_entry(message: Message, state: FSMContext) -> None:
     await _begin(message, state)
 
@@ -173,7 +178,7 @@ async def confirm_application(
     ticket = await tickets.create(
         kind=TicketKind.APPLICATION,
         user_id=callback.from_user.id,
-        subject=f"Анкета: {data['nickname']}",
+        subject=f"Анкета в команду: {data['nickname']}",
         payload={
             "age": data.get("age"),
             "nickname": data.get("nickname"),
