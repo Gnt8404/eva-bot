@@ -23,4 +23,5 @@ pytest-of-*
 
 # Local deployment credentials
 .render_api_key
+.pingdog_key
 
