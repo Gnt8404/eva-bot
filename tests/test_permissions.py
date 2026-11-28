@@ -29,6 +29,15 @@ from app.tickets.model import TicketKind, TicketStatus
 from app.tickets.service import TicketService
 
 
+def test_legacy_public_host_is_migrated() -> None:
+    config = Settings(
+        _env_file=None,
+        bot_token="123:test-token",
+        server_host="107.161.154.218",
+    )
+    assert config.server_host == "aetherlyn.mcmod.ru"
+
+
 def test_known_server_id_typo_is_corrected() -> None:
     typo = "acd21ae2-4cf0-49e2-89cc-d8f908f66505a"
     correct = "acd21ae2-4cf0-49e2-89cc-d8f90866505a"

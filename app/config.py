@@ -138,6 +138,14 @@ class Settings(BaseSettings):
             return "acd21ae2-4cf0-49e2-89cc-d8f90866505a"
         return value
 
+    @field_validator("server_host", mode="after")
+    @classmethod
+    def _fix_known_public_host(cls, value: str) -> str:
+        # One-time migration from the old numeric address to the public hostname.
+        if value.strip() == "107.161.154.218":
+            return "aetherlyn.mcmod.ru"
+        return value.strip()
+
     @field_validator("webhook_path")
     @classmethod
     def _validate_webhook_path(cls, value: str) -> str:

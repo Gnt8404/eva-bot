@@ -84,6 +84,8 @@ class RconClient:
             return body.strip()
         except TimeoutError as exc:
             raise RconError("RCON response timeout") from exc
+        except (asyncio.IncompleteReadError, ConnectionError, OSError) as exc:
+            raise RconError("RCON connection closed by host") from exc
         finally:
             writer.close()
             with contextlib.suppress(Exception):
