@@ -39,7 +39,7 @@ def _server_text(settings: Settings, status_text: str, channels: list[dict[str, 
     lines = [
         "Aetherlyn, сезон 3.",
         f"{ip_line}, порт {settings.server_port}.",
-        "Java Paper 1.21.11 (build 127), выживание/PvE, difficulty hard, до 20 игроков.",
+        "Выживание/PvE, difficulty hard, до 20 игроков.",
         "Bedrock: через Geyser/Floodgate, вход по тому же адресу.",
         status_text,
         "Регистрация: /register, вход: /login. Гриферство и читы запрещены.",
